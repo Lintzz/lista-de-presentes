@@ -1,158 +1,210 @@
-@import "tailwindcss";
+/* src/index.css */
 
-/* --- CENTRAL DE CORES --- */
+/* --- CENTRAL DE CORES (Tema Dark Mode: Slate & Indigo) --- */
 :root {
-  /* === BASE DO SITE === */
-  /* Fundos */
-  --color-page-bg: #dddfd2;
-  --color-header-bg: #46624c;
-  --color-card-bg: #46624c;
-  --color-bg-hover: #46624c;
-  --color-overlay: #00000080; /* Fundo escuro do modal (black/50) */
+  /* Fundos Principais */
+  --color-page-bg: #0f172a; /* Fundo geral escuro (Slate 900) */
+  --color-header-bg: #1e293b; /* Topo um pouco mais claro (Slate 800) para destacar */
+  --color-card-bg: #1e293b; /* Cards acompanham o topo (Slate 800) */
+  --color-bg-hover: #334155; /* Hover suave (Slate 700) */
+  --color-overlay: rgba(0, 0, 0, 0.75); /* Fundo bem escuro para os modais */
 
-  /* Textos */
-  --color-text-heading: #46624c; /* Títulos da página */
-  --color-card-heading: #dddfd2; /* Títulos dentro de cards */
-  --color-text-body: #dddfd2; /* Texto padrão */
-  --color-text-muted: #729279; /* Texto secundário */
+  /* Textos e Utilitários Extras */
+  --color-white: #ffffff;
+  --color-text-heading: #f8fafc; /* Branco gelo para títulos saltarem na tela */
+  --color-card-heading: #f1f5f9; 
+  --color-text-body: #cbd5e1; /* Cinza claro amigável para leitura longa */
+  --color-text-muted: #94a3b8; /* Cinza médio para textos secundários e dicas */
+  --color-placeholder: #64748b;
+  --color-focus-ring: #818cf8; /* Anel de foco Indigo mais claro no dark mode */
 
-  /* Bordas */
-  --color-border: #253228;
+  /* Bordas e Ações */
+  --color-border: #334155; /* Bordas sutis que não brigam com o conteúdo */
+  --color-primary: #6366f1; /* Botões no Indigo vibrante */
+  --color-primary-hover: #818cf8; /* Fica ligeiramente mais claro no hover (efeito neon) */
+  --color-text-on-primary: #ffffff;
 
-  /* Cores de Ação (Botões principais) */
-  --color-primary: #dddfd2;
-  --color-primary-hover: #46624c;
-  --color-text-on-primary: #253228;
+  /* Status (Modais e avisos - adaptados para dark mode) */
+  --color-success-bg: #064e3b; /* Fundo verde escuro */
+  --color-success-text: #34d399; /* Texto verde neon */
+  --color-error-bg: #7f1d1d; /* Fundo vermelho escuro */
+  --color-error-text: #f87171; /* Texto vermelho claro */
+  --color-error-hover: #ef4444;
+  --color-info-bg: #0c4a6e; /* Fundo azul escuro */
+  --color-info-text: #38bdf8; /* Texto azul claro */
 
-  /* Status (Modais e avisos) */
-  --color-success-bg: #b0be8f;
-  --color-success-text: #253228;
-  --color-error-bg: #fee2e2;
-  --color-error-text: #dc2626;
-  --color-info-bg: #dddfd2;
-  --color-info-text: #253228;
+  /* Sombras (Mais intensas no dark mode para criar profundidade) */
+  --color-shadow-light: rgba(0, 0, 0, 0.2);
+  --color-shadow-md: rgba(0, 0, 0, 0.3);
+  --color-shadow-lg: rgba(0, 0, 0, 0.5);
 
   /* === PRIORIDADES === */
-  --prio-high: #b73939; /* Vermelho */
-  --prio-med: #ba863c; /* Amarelo/Laranja */
-  --prio-low: #5da87e; /* Verde/Esmeralda */
-  --prio-text: #dddfd2; /* Texto das etiquetas de prioridade */
+  --prio-high: #ef4444; /* Vermelho */
+  --prio-med: #f59e0b; /* Laranja */
+  --prio-low: #10b981; /* Verde */
+  --prio-text: #ffffff; 
 
-  /* === LOJAS (Botões de Link) === */
-  /* Mercado Livre */
-  --store-ml-bg: #232f3e;
-  --store-ml-text: #dddfd2;
-  --store-ml-border: #111827;
-  --store-ml-hover: #37475a;
+  /* === LOJAS (CORES OFICIAIS MANTIDAS) === */
+  --store-ml-bg: #ffe600; 
+  --store-ml-text: #2d3277; 
+  --store-ml-border: #e5ce00;
+  --store-ml-hover: #f0d800;
 
-  /* Amazon */
-  --store-amz-bg: #232f3e;
-  --store-amz-text: #dddfd2;
+  --store-amz-bg: #232f3e; 
+  --store-amz-text: #ffffff;
   --store-amz-border: #111827;
   --store-amz-hover: #37475a;
 
-  /* Shopee */
-  --store-shp-bg: #232f3e;
-  --store-shp-text: #dddfd2;
-  --store-shp-border: #111827;
-  --store-shp-hover: #37475a;
+  --store-shp-bg: #ee4d2d; 
+  --store-shp-text: #ffffff;
+  --store-shp-border: #d73a1e;
+  --store-shp-hover: #f05a3e;
 
-  /* Magalu */
-  --store-mgl-bg: #232f3e;
-  --store-mgl-text: #dddfd2;
-  --store-mgl-border: #111827;
-  --store-mgl-hover: #37475a;
+  --store-mgl-bg: #0086ff; 
+  --store-mgl-text: #ffffff;
+  --store-mgl-border: #0073e6;
+  --store-mgl-hover: #1a94ff;
 
-  /* Loja Genérica (Outros sites) */
-  --store-gen-bg: #232f3e; /* Slate 700 */
-  --store-gen-text: #dddfd2;
-  --store-gen-border: #111827; /* Slate 800 */
-  --store-gen-hover: #37475a;
+  /* Loja Genérica adaptada pro Dark Mode */
+  --store-gen-bg: #334155; 
+  --store-gen-text: #f8fafc;
+  --store-gen-border: #475569;
+  --store-gen-hover: #475569;
 
-  /* === ETIQUETAS (Tags) === */
-  /* Tamanho (Roupas/Calçados) */
-  --tag-size-bg: #dbeafe; /* Azul claro */
-  --tag-size-text: #1e40af; /* Azul escuro */
+  /* === ETIQUETAS E BADGES === */
+  --tag-size-bg: #1e3a8a; /* Fundo azul profundo */
+  --tag-size-text: #bfdbfe; /* Texto azul claro */
+  --tag-volt-bg: #713f12; /* Fundo amarelo/marrom profundo */
+  --tag-volt-text: #fef08a; /* Texto amarelo claro */
+  --color-badge-bg: rgba(0, 0, 0, 0.8);
+  --color-badge-text: #ffffff;
 
-  /* Voltagem (Eletrônicos) */
-  --tag-volt-bg: #fef9c3; /* Amarelo claro */
-  --tag-volt-text: #854d0e; /* Marrom/Amarelo escuro */
+  /* === TEXTAREAS DO PERFIL (Adaptadas pro Dark) === */
+  --color-likes-bg: #064e3b; /* Fundo verde escuro */
+  --color-likes-border: #059669; 
+  --color-likes-text: #a7f3d0; 
+  --color-likes-focus: #10b981;
+  
+  --color-dislikes-bg: #7f1d1d; /* Fundo vermelho escuro */
+  --color-dislikes-border: #dc2626; 
+  --color-dislikes-text: #fecaca; 
+  --color-dislikes-focus: #ef4444;
 
-  /* === TEMAS DAS LISTAS (Bordas e Links) === */
-  /* Blue */
+  /* === TEMAS DAS LISTAS (Cores vivas para bordas, badges escuros com texto neon) === */
+  --list-blue-bg: #3b82f6;
   --list-blue-border: #3b82f6;
-  --list-blue-text: #2563eb;
+  --list-blue-text: #60a5fa;
+  --list-blue-badge-bg: #1e3a8a;
+  --list-blue-badge-text: #bfdbfe;
 
-  /* Red */
+  --list-red-bg: #ef4444;
   --list-red-border: #ef4444;
-  --list-red-text: #dc2626;
+  --list-red-text: #f87171;
+  --list-red-badge-bg: #7f1d1d;
+  --list-red-badge-text: #fecaca;
 
-  /* Green */
+  --list-green-bg: #22c55e;
   --list-green-border: #22c55e;
-  --list-green-text: #16a34a;
+  --list-green-text: #4ade80;
+  --list-green-badge-bg: #064e3b;
+  --list-green-badge-text: #a7f3d0;
 
-  /* Purple */
+  --list-purple-bg: #a855f7;
   --list-purple-border: #a855f7;
-  --list-purple-text: #9333ea;
+  --list-purple-text: #c084fc;
+  --list-purple-badge-bg: #581c87;
+  --list-purple-badge-text: #e9d5ff;
 
-  /* Orange */
+  --list-orange-bg: #f97316;
   --list-orange-border: #f97316;
-  --list-orange-text: #ea580c;
+  --list-orange-text: #fb923c;
+  --list-orange-badge-bg: #7c2d12;
+  --list-orange-badge-text: #fed7aa;
 
-  /* Pink */
+  --list-pink-bg: #ec4899;
   --list-pink-border: #ec4899;
-  --list-pink-text: #db2777;
+  --list-pink-text: #f472b6;
+  --list-pink-badge-bg: #831843;
+  --list-pink-badge-text: #fbcfe8;
 
-  /* === CÓDIGO (Visualização do código da lista) === */
-  --code-text-default: var(--color-text-heading);
-  --code-text-hover: #dddfd2;
+  /* === CÓDIGO === */
+  --code-text-default: var(--color-primary-hover);
+  --code-text-hover: #ffffff;
 }
 
-@layer base {
-  html,
-  body {
-    background-color: var(--color-page-bg);
-    color: var(--color-text-body);
-    transition: background-color 0.3s, color 0.3s;
-    min-height: 100vh;
-  }
-  #root {
-    @apply min-h-screen flex flex-col;
-  }
+/* === BASE DO SITE === */
+html,
+body {
+  background-color: var(--color-page-bg);
+  color: var(--color-text-body);
+  transition: background-color 0.3s, color 0.3s;
+  min-height: 100vh;
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark; /* Diz aos navegadores para renderizar scrollbars e inputs nativos em dark mode */
 }
 
-@layer utilities {
-  .btn-primary {
-    background-color: var(--color-primary);
-    color: var(--color-text-on-primary);
-    @apply px-4 py-2 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow-md;
-  }
-  .btn-primary:hover {
-    opacity: 90%;
-  }
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 
-  /* Input/Select */
-  .input-field {
-    background-color: var(--color-card-bg);
-    border: 1px solid var(--color-border);
-    color: var(--color-text-body);
-    @apply rounded-lg p-3 w-full focus:outline-none focus:ring-2 focus:ring-(--color-primary) transition-colors placeholder-gray-400;
-  }
-  .input-field:hover {
-    border-color: var(--color-primary);
-  }
+/* === COMPONENTES GLOBAIS === */
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-primary);
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 2px var(--color-shadow-light);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  box-shadow: 0 4px 6px -1px var(--color-shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Inputs no Dark Mode ficam com fundo igual ao da página (mais escuro que o card) para dar profundidade */
+.input-field {
+  background-color: var(--color-page-bg);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-heading);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s ease-in-out;
+}
+
+.input-field::placeholder { color: var(--color-placeholder); }
+.input-field:focus { 
+  outline: none; 
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3); 
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
+
 .modal-animate {
   animation: fadeIn 0.2s ease-out forwards;
 }

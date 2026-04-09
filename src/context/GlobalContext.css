@@ -1,0 +1,75 @@
+/* src/context/GlobalContext.css */
+
+.global-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999; /* Garante que fica por cima de TUDO no site */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-overlay);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.global-modal-box {
+  background-color: var(--color-card-bg);
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px var(--color-shadow-lg);
+  max-width: 24rem;
+  width: 100%;
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.global-modal-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+}
+
+.global-modal-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.global-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--color-card-heading);
+  margin-bottom: 0.5rem;
+}
+
+.global-modal-message {
+  text-align: center;
+  color: var(--color-text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.global-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.btn-modal-understand {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-card-heading);
+  color: var(--color-card-bg);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-modal-understand:hover {
+  opacity: 0.9;
+}

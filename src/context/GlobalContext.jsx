@@ -1,4 +1,6 @@
+// src/context/GlobalContext.jsx
 import { createContext, useContext, useState } from "react";
+import "./GlobalContext.css"; // Importação do CSS que acabamos de criar
 
 const GlobalContext = createContext();
 
@@ -19,89 +21,56 @@ export function GlobalProvider({ children }) {
     setModal({ ...modal, open: false });
   };
 
-  const getModalColors = (type) => {
+  // Função para pegar as cores do ícone baseado no tipo do modal usando as variáveis globais
+  const getModalIconStyle = (type) => {
     switch (type) {
       case "error":
-        return "bg-[var(--color-error-bg)] text-[var(--color-error-text)]";
+        return { backgroundColor: "var(--color-error-bg)", color: "var(--color-error-text)" };
       case "info":
-        return "bg-[var(--color-info-bg)] text-[var(--color-info-text)]";
+        return { backgroundColor: "var(--color-info-bg)", color: "var(--color-info-text)" };
       default:
-        return "bg-[var(--color-success-bg)] text-[var(--color-success-text)]";
+        return { backgroundColor: "var(--color-success-bg)", color: "var(--color-success-text)" };
     }
   };
 
   return (
     <GlobalContext.Provider value={{ showModal }}>
       {children}
+      
       {modal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-(--color-card-bg) rounded-2xl shadow-2xl max-w-sm w-full p-6 modal-animate border border-(--color-border) transition-colors">
-            <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${getModalColors(
-                modal.type
-              )}`}
-            >
+        <div className="global-modal-overlay">
+          {/* A classe modal-animate continua vindo do seu index.css global */}
+          <div className="global-modal-box modal-animate">
+            
+            <div className="global-modal-icon" style={getModalIconStyle(modal.type)}>
               {modal.type === "success" && (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 13l4 4L19 7" />
                 </svg>
               )}
               {modal.type === "error" && (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 18L18 6M6 6l12 12" />
                 </svg>
               )}
               {modal.type === "info" && (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
             </div>
 
-            <h3 className="text-xl font-bold text-center text-(--color-card-heading) mb-2">
+            <h3 className="global-modal-title">
               {modal.title}
             </h3>
-            <p className="text-center text-(--color-text-muted) mb-6">
+            <p className="global-modal-message">
               {modal.message}
             </p>
 
-            <div className="flex gap-3 justify-center">
+            <div className="global-modal-actions">
               {modal.onConfirm ? (
                 <>
-                  <button
-                    onClick={closeModal}
-                    className="btn-primary px-4 py-2 rounded-lg font-medium transition-colors"
-                  >
+                  <button onClick={closeModal} className="btn-primary">
                     Cancelar
                   </button>
                   <button
@@ -109,16 +78,13 @@ export function GlobalProvider({ children }) {
                       modal.onConfirm();
                       closeModal();
                     }}
-                    className="btn-primary px-4 py-2 rounded-lg font-medium transition-colors"
+                    className="btn-primary"
                   >
                     Confirmar
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={closeModal}
-                  className="w-full px-4 py-2 rounded-lg bg-(--color-card-heading) text-(--color-card-bg) hover:opacity-90 font-medium transition-colors"
-                >
+                <button onClick={closeModal} className="btn-modal-understand">
                   Entendi
                 </button>
               )}

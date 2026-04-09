@@ -1,9 +1,10 @@
+// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import { GlobalProvider } from "./context/GlobalContext";
-import Layout from "./components/Layout";
+import Layout from "./components/Layout"; 
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import MyLists from "./pages/MyLists";
@@ -23,7 +24,7 @@ function App() {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-screen bg-skin-base text-skin-text">
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--color-page-bg)', color: 'var(--color-text-body)' }}>
         Carregando...
       </div>
     );

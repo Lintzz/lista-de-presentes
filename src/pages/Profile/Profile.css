@@ -1,0 +1,164 @@
+/* src/pages/Profile/Profile.css */
+.profile-container {
+  max-width: 42rem;
+  margin: 1.5rem auto 0;
+  padding: 0 1rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 500;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: opacity 0.2s;
+  text-decoration: none;
+  margin-bottom: 1rem;
+}
+
+.back-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.profile-card {
+  background-color: var(--color-card-bg);
+  padding: 2rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px var(--color-shadow-md);
+  border: 1px solid var(--color-border);
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.avatar-wrapper {
+  width: 8rem;
+  height: 8rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid var(--color-border);
+  box-shadow: 0 10px 15px -3px var(--color-shadow-md);
+  margin-bottom: 1rem;
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.form-group-center {
+  width: 100%;
+  max-width: 28rem;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.label-sm {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.name-input-large {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-card-heading);
+  padding-bottom: 0.25rem;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.name-input-large:hover { border-bottom-color: var(--color-border); }
+.name-input-large:focus { border-bottom-color: var(--color-primary); }
+
+.photo-input {
+  font-size: 0.75rem;
+  text-align: center;
+  width: 100%;
+  background-color: var(--color-page-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  color: var(--color-text-muted);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.photo-input:focus { box-shadow: 0 0 0 1px var(--color-primary); }
+
+.display-name {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--color-card-heading);
+  margin: 0;
+}
+
+.profile-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.sizes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.size-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-body);
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+/* Textareas customizados agora usam as variaveis do index.css */
+.textarea-likes { 
+  background-color: var(--color-likes-bg); 
+  border: 1px solid var(--color-likes-border); 
+  color: var(--color-likes-text); 
+}
+.textarea-likes:focus { 
+  box-shadow: 0 0 0 2px var(--color-likes-focus); 
+}
+
+.textarea-dislikes { 
+  background-color: var(--color-dislikes-bg); 
+  border: 1px solid var(--color-dislikes-border); 
+  color: var(--color-dislikes-text); 
+}
+.textarea-dislikes:focus { 
+  box-shadow: 0 0 0 2px var(--color-dislikes-focus); 
+}
+
+.btn-submit-profile {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1.125rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
