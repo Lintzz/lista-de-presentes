@@ -56,6 +56,8 @@ function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnabled }) 
   const isGifted = !!item.giftedBy;
   const isGiver = user && (item.giftedById === user.uid || (!item.giftedById && item.giftedBy));
 
+  const isLocked = isGifted && !isOwner && !isGiver;
+
   // Lógica para descobrir qual item exibir na tela (Item Principal vs Variação Selecionada no Carrossel)
   const hasVariations = item.isGroup && item.variations && item.variations.length > 0;
   const currentVariation = hasVariations ? item.variations[varIndex] : null;
@@ -125,7 +127,14 @@ function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnabled }) 
         <div className="stores-list">
           {hasVariations ? (
              currentVariation && currentVariation.link && (
-                <a href={currentVariation.link} target="_blank" rel="noreferrer" className={`store-btn ${getStoreStyle(currentVariation.link)?.className || "store-gen"}`}>
+                <a 
+                  href={isLocked ? undefined : currentVariation.link} 
+                  target={isLocked ? undefined : "_blank"} 
+                  rel={isLocked ? undefined : "noreferrer"} 
+                  className={`store-btn ${getStoreStyle(currentVariation.link)?.className || "store-gen"}`}
+                  style={isLocked ? { pointerEvents: 'none', filter: 'grayscale(100%)', opacity: 0.6 } : {}}
+                  onClick={isLocked ? (e) => e.preventDefault() : undefined}
+                >
                   <StoreIcon url={currentVariation.link} /> {getStoreStyle(currentVariation.link)?.name || "Ver Loja"}
                 </a>
              )
@@ -133,7 +142,15 @@ function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnabled }) 
              [item.link1, item.link2, item.link3].filter(Boolean).map((link, idx) => {
                const sInfo = getStoreStyle(link) || { name: "Visitar Loja", className: "store-gen" };
                return (
-                 <a key={idx} href={link} target="_blank" rel="noreferrer" className={`store-btn ${sInfo.className}`}>
+                 <a 
+                   key={idx} 
+                   href={isLocked ? undefined : link} 
+                   target={isLocked ? undefined : "_blank"} 
+                   rel={isLocked ? undefined : "noreferrer"} 
+                   className={`store-btn ${sInfo.className}`}
+                   style={isLocked ? { pointerEvents: 'none', filter: 'grayscale(100%)', opacity: 0.6 } : {}}
+                   onClick={isLocked ? (e) => e.preventDefault() : undefined}
+                 >
                    <StoreIcon url={link} /> {sInfo.name}
                  </a>
                );
