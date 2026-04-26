@@ -209,6 +209,7 @@ export default function ListView({ user }) {
   const [sortBy, setSortBy] = useState("manual");
   const [filterCategory, setFilterCategory] = useState("Todas");
   const [viewMode, setViewMode] = useState("active");
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -358,9 +359,18 @@ export default function ListView({ user }) {
 
   const getFilteredItems = () => {
     if (!listData?.items) return [];
-    let items = listData.items.filter((item) => (viewMode === "archived" ? item.isArchived : !item.isArchived) && (filterCategory === "Todas" || (item.category || "Outros") === filterCategory));
+    
+    let items = listData.items.filter((item) => {
+      const matchArchive = viewMode === "archived" ? item.isArchived : !item.isArchived;
+      const matchCategory = filterCategory === "Todas" || (item.category || "Outros") === filterCategory;
+      const matchAvailable = (showOnlyAvailable && !isOwner) ? !item.giftedBy : true;
+
+      return matchArchive && matchCategory && matchAvailable;
+    });
+
     if (sortBy === "value") items.sort((a, b) => a.price - b.price);
     else if (sortBy === "priority") { const pMap = { Alta: 3, Média: 2, Baixa: 1 }; items.sort((a, b) => pMap[b.priority] - pMap[a.priority]); }
+    
     return items;
   };
 
@@ -515,7 +525,10 @@ export default function ListView({ user }) {
       <div className="filters-bar">
         <div className="filter-group">
           <span className="filter-label">Filtrar:</span>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input-field" style={{padding:'0.5rem'}}><option value="Todas">Todas</option>{CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}</select>
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input-field" style={{padding:'0.5rem'}}>
+            <option value="Todas">Todas</option>
+            {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
+          </select>
         </div>
         <div className="filter-group">
           <span className="filter-label">Ordenar:</span>
@@ -525,6 +538,22 @@ export default function ListView({ user }) {
             <option value="value">Valor</option>
           </select>
         </div>
+        
+        {/* Agora a caixinha só aparece se a pessoa NÃO for a dona da lista */}
+        {!isOwner && (
+          <div className="filter-group" style={{ marginLeft: window.innerWidth > 768 ? 'auto' : '0' }}>
+            <input 
+              type="checkbox" 
+              id="showAvailable" 
+              checked={showOnlyAvailable} 
+              onChange={(e) => setShowOnlyAvailable(e.target.checked)} 
+              style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
+            />
+            <label htmlFor="showAvailable" className="filter-label" style={{ cursor: 'pointer', margin: 0 }}>
+              Ocultar já marcados
+            </label>
+          </div>
+        )}
       </div>
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
