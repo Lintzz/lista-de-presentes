@@ -1,18 +1,24 @@
-// src/pages/Profile/index.jsx
+"use client";
+
 import { useState, useEffect } from "react";
 import { db, auth } from "../../lib/firebase";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useGlobal } from "../../context/GlobalContext";
+import { useAuth } from "../../context/AuthContext";
 import "./Profile.css";
 
-export default function Profile({ user }) {
+export default function Profile() {
+  const { user } = useAuth();
   const { showModal } = useGlobal();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const queryUid = searchParams.get("uid");
-  const fromListCode = searchParams.get("fromList");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Handling the case where searchParams might not be fully populated immediately
+  const queryUid = searchParams ? searchParams.get("uid") : null;
+  const fromListCode = searchParams ? searchParams.get("fromList") : null;
   const targetUid = queryUid || (user ? user.uid : null);
   const isMyProfile = user && targetUid === user.uid;
 
@@ -30,7 +36,7 @@ export default function Profile({ user }) {
   };
 
   useEffect(() => {
-    if (!targetUid) { navigate("/"); return; }
+    if (!targetUid) { router.push("/"); return; }
     const fetchProfile = async () => {
       try {
         const docRef = doc(db, "users", targetUid);
@@ -54,7 +60,7 @@ export default function Profile({ user }) {
       }
     };
     fetchProfile();
-  }, [targetUid, navigate, isMyProfile, user]);
+  }, [targetUid, router, isMyProfile, user]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -92,7 +98,7 @@ export default function Profile({ user }) {
   return (
     <div className="profile-container">
       {fromListCode && (
-        <Link to={`/${fromListCode}`} className="back-link">
+        <Link href={`/${fromListCode}`} className="back-link">
           <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>

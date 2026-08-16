@@ -1,16 +1,21 @@
-// src/components/Layout.jsx
+"use client";
+
+// components/Layout/index.jsx
 import { useState, useEffect } from "react";
-import { Outlet, Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 import { signInWithPopup, signOut, updateProfile } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "../../lib/firebase";
 import { useGlobal } from "../../context/GlobalContext";
-import logoImg from "../../assets/Logo.png";
+import { useAuth } from "../../context/AuthContext";
 import "./Layout.css"; // Importação do CSS
 
-export default function Layout({ user }) {
-  const navigate = useNavigate();
+export default function Layout({ children }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { showModal } = useGlobal();
+  const { user } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [showNameModal, setShowNameModal] = useState(false);
@@ -68,7 +73,7 @@ export default function Layout({ user }) {
 
   const handleLogout = async () => {
     await signOut(auth);
-    navigate("/");
+    router.push("/");
   };
 
   return (
@@ -100,25 +105,28 @@ export default function Layout({ user }) {
 
       <header className="header">
         <div className="header-container">
-          <Link to="/" className="logo-link">
-            <img src={logoImg} alt="GiftList Logo" className="logo-img" />
+          <Link href="/" className="logo-link">
+            {/* Como o vite usava a tag img com import, no next podemos usar img normal com caminho publico ou next/image.
+                Vou usar o formato Next.js (colocando a logo no src/assets para a tag img normal se compilar ou /assets)
+                Mas no app router é melhor deixar estático */}
+            <img src="/Logo.png" alt="GiftList Logo" className="logo-img" />
           </Link>
 
           <div className="header-right">
             {user ? (
               <>
-                <Link to="/minhas-listas" className="nav-link">
+                <Link href="/minhas-listas" className="nav-link">
                   Minhas Listas
                 </Link>
 
-                <Link to="/minhas-listas" className="nav-link-mobile">
+                <Link href="/minhas-listas" className="nav-link-mobile">
                   <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </Link>
 
                 <div className="user-menu">
-                  <Link to="/perfil" className="profile-link">
+                  <Link href="/perfil" className="profile-link">
                     <img src={user.photoURL} alt="Perfil" className="profile-img" />
                     <span className="profile-name">{user.displayName}</span>
                   </Link>
@@ -140,7 +148,7 @@ export default function Layout({ user }) {
       </header>
 
       <main className="main-content">
-        <Outlet />
+        {children}
       </main>
 
       <footer className="footer">

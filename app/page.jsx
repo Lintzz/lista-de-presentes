@@ -1,16 +1,19 @@
-// src/pages/Home.jsx
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Home.css"; // ← Importação do arquivo de estilo exclusivo desta página
+"use client";
 
-export default function Home({ user }) {
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
+import "./Home.css";
+
+export default function Home() {
+  const { user } = useAuth();
   const [code, setCode] = useState("");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (code.trim()) {
-      navigate(`/${code.toUpperCase()}`);
+      router.push(`/${code.toUpperCase()}`);
     }
   };
 

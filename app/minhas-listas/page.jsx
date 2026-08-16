@@ -1,9 +1,12 @@
+"use client";
+
 // src/pages/MyLists/index.jsx
 import { useState, useEffect } from "react";
 import { db } from "../../lib/firebase";
 import { collection, addDoc, query, where, onSnapshot, serverTimestamp, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { useGlobal } from "../../context/GlobalContext";
+import { useAuth } from "../../context/AuthContext";
 import "./MyLists.css";
 
 const THEME_COLORS = {
@@ -15,7 +18,8 @@ const THEME_COLORS = {
   pink: { label: "Rosa", varBg: "var(--list-pink-bg)", badgeBg: "var(--list-pink-badge-bg)", badgeText: "var(--list-pink-badge-text)" },
 };
 
-export default function MyLists({ user }) {
+export default function MyLists() {
+  const { user } = useAuth();
   const { showModal } = useGlobal();
   const [lists, setLists] = useState([]);
   const [newListName, setNewListName] = useState("");
@@ -142,7 +146,7 @@ export default function MyLists({ user }) {
 
           return (
             <div key={list.id} className="list-card" style={{ borderLeftColor: theme.varBg }}>
-              <Link to={`/${list.code}`} className="list-link">
+              <Link href={`/${list.code}`} className="list-link">
                 <div className="list-header">
                   <h3 className="list-name">{list.name}</h3>
                   <span

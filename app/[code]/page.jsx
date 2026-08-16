@@ -1,10 +1,14 @@
+"use client";
+
 // src/pages/ListView/index.jsx
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { db, auth, googleProvider } from "../../lib/firebase";
 import { signInWithPopup } from "firebase/auth";
 import { collection, query, where, updateDoc, doc, arrayUnion, onSnapshot, getDoc } from "firebase/firestore";
 import { useGlobal } from "../../context/GlobalContext";
+import { useAuth } from "../../context/AuthContext";
 
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -191,7 +195,8 @@ function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnabled }) 
   );
 }
 
-export default function ListView({ user }) {
+export default function ListView() {
+  const { user } = useAuth();
   const { code } = useParams();
   const { showModal } = useGlobal();
   const [listData, setListData] = useState(null);
@@ -299,7 +304,7 @@ export default function ListView({ user }) {
     setIsScraping(true);
     
     try {
-      const API_URL = "https://meu-extrator.onrender.com/api/extrair";
+      const API_URL = "/api/extrair";
       const response = await fetch(`${API_URL}?url=${encodeURIComponent(scraperLink)}`);
       const data = await response.json();
       

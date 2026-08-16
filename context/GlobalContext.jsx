@@ -1,3 +1,5 @@
+"use client";
+
 // src/context/GlobalContext.jsx
 import { createContext, useContext, useState } from "react";
 import "./GlobalContext.css"; // Importação do CSS que acabamos de criar
