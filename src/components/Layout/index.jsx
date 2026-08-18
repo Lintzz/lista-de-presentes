@@ -109,7 +109,7 @@ export default function Layout({ children }) {
             {/* Como o vite usava a tag img com import, no next podemos usar img normal com caminho publico ou next/image.
                 Vou usar o formato Next.js (colocando a logo no src/assets para a tag img normal se compilar ou /assets)
                 Mas no app router é melhor deixar estático */}
-            <img src="/Logo.png" alt="GiftList Logo" className="logo-img" />
+            <img src="/images/Logo.png" alt="GiftList Logo" className="logo-img" />
           </Link>
 
           <div className="header-right">

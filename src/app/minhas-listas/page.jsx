@@ -7,7 +7,7 @@ import { collection, addDoc, query, where, onSnapshot, serverTimestamp, deleteDo
 import Link from "next/link";
 import { useGlobal } from "../../context/GlobalContext";
 import { useAuth } from "../../context/AuthContext";
-import "./MyLists.css";
+import "../../styles/MyLists.css";
 
 const THEME_COLORS = {
   blue: { label: "Azul", varBg: "var(--list-blue-bg)", badgeBg: "var(--list-blue-badge-bg)", badgeText: "var(--list-blue-badge-text)" },

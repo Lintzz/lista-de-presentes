@@ -7,7 +7,7 @@ export const metadata = {
   title: "Lista de Presentes",
   description: "Crie sua lista de presentes e compartilhe com seus amigos",
   icons: {
-    icon: '/MeuPresente.svg',
+    icon: '/icons/MeuPresente.svg',
   },
 };
 

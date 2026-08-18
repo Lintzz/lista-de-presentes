@@ -8,7 +8,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useGlobal } from "../../context/GlobalContext";
 import { useAuth } from "../../context/AuthContext";
-import "./Profile.css";
+import "../../styles/Profile.css";
 
 export default function Profile() {
   const { user } = useAuth();
