@@ -182,6 +182,126 @@ function ehMuroAntiBot(urlFinal, html) {
     );
 }
 
+const ML_API = 'https://api.mercadolibre.com';
+
+// Extrai o id do anuncio (MLB...) e o do produto de catalogo (MLB.../MLBU...)
+// a partir das formas de URL que o Mercado Livre usa.
+function extrairIdsMercadoLivre(...urls) {
+    const ids = { itemId: '', productId: '' };
+    const fila = urls.filter(Boolean);
+
+    while (fila.length) {
+        const bruta = fila.shift();
+        let url;
+        try {
+            url = new URL(bruta);
+        } catch {
+            continue;
+        }
+
+        // a página de bloqueio carrega o destino original em ?go=
+        const destino = url.searchParams.get('go');
+        if (destino) fila.push(destino);
+
+        const texto = decodeURIComponent(url.href);
+
+        // /MLB-6229538278-slug-_JM  ou  ?item_id=MLB6229538278
+        ids.itemId ||= (texto.match(/\/(ML[A-Z])-?(\d{6,})-/) || []).slice(1).join('') || '';
+        ids.itemId ||= (texto.match(/item_id[=:](ML[A-Z]\d{6,})/i) || [])[1] || '';
+
+        // /p/MLB19338097  ou  /up/MLBU789105008
+        ids.productId ||= (texto.match(/\/u?p\/(ML[A-Z]U?\d{6,})/) || [])[1] || '';
+    }
+
+    return ids;
+}
+
+let tokenEmCache = { valor: '', expiraEm: 0 };
+
+async function obterTokenMercadoLivre() {
+    const agora = Date.now();
+    if (tokenEmCache.valor && agora < tokenEmCache.expiraEm) return tokenEmCache.valor;
+
+    if (process.env.ML_ACCESS_TOKEN) return process.env.ML_ACCESS_TOKEN;
+
+    const clientId = process.env.ML_CLIENT_ID;
+    const clientSecret = process.env.ML_CLIENT_SECRET;
+    if (!clientId || !clientSecret) return '';
+
+    const corpo = new URLSearchParams({
+        grant_type: process.env.ML_REFRESH_TOKEN ? 'refresh_token' : 'client_credentials',
+        client_id: clientId,
+        client_secret: clientSecret,
+    });
+    if (process.env.ML_REFRESH_TOKEN) corpo.set('refresh_token', process.env.ML_REFRESH_TOKEN);
+
+    const resposta = await fetch(`${ML_API}/oauth/token`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' },
+        body: corpo,
+    });
+
+    if (!resposta.ok) {
+        console.error('Mercado Livre: falha ao obter token', resposta.status, await resposta.text());
+        return '';
+    }
+
+    const dados = await resposta.json();
+    if (!dados.access_token) return '';
+
+    // renova um minuto antes de expirar
+    tokenEmCache = {
+        valor: dados.access_token,
+        expiraEm: agora + Math.max((dados.expires_in || 21600) - 60, 60) * 1000,
+    };
+    return tokenEmCache.valor;
+}
+
+async function consultarApiMercadoLivre(caminho, token) {
+    const resposta = await fetch(`${ML_API}${caminho}`, {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}`, accept: 'application/json' },
+    });
+    if (!resposta.ok) {
+        console.error('Mercado Livre: falha na API', caminho, resposta.status);
+        return null;
+    }
+    return resposta.json();
+}
+
+// Usada quando o scraping do Mercado Livre esbarra no muro anti-bot.
+async function buscarNoMercadoLivrePelaApi(ids) {
+    if (!ids.itemId && !ids.productId) return null;
+
+    const token = await obterTokenMercadoLivre();
+    if (!token) return null;
+
+    if (ids.itemId) {
+        const item = await consultarApiMercadoLivre(`/items/${ids.itemId}`, token);
+        if (item?.title) {
+            return {
+                nome: item.title,
+                preco: normalizarPreco(item.price),
+                foto: item.pictures?.[0]?.secure_url || item.secure_thumbnail || item.thumbnail || '',
+            };
+        }
+    }
+
+    if (ids.productId) {
+        const produto = await consultarApiMercadoLivre(`/products/${ids.productId}`, token);
+        if (produto?.name) {
+            return {
+                nome: produto.name,
+                preco: normalizarPreco(produto.buy_box_winner?.price ?? produto.price),
+                foto: produto.pictures?.[0]?.secure_url || produto.pictures?.[0]?.url || '',
+            };
+        }
+    }
+
+    return null;
+}
+
 async function buscarHtml(url, userAgent) {
     return fetch(url, {
         redirect: 'follow',
@@ -252,7 +372,30 @@ export async function GET(request) {
             );
         }
 
-        if (ehMuroAntiBot(urlFinal, html)) {
+        const bloqueado = ehMuroAntiBot(urlFinal, html);
+
+        let resultado = { nome: '', preco: '', foto: '' };
+        if (!bloqueado) {
+            const $ = cheerio.load(html);
+            resultado = mesclar(extrairJsonLd($), extrairOpenGraph($), extrairDom($, site));
+            resultado.nome = decodificarTexto(resultado.nome);
+            resultado.foto = absolutizar(resultado.foto, urlFinal);
+        }
+
+        const vazio = !resultado.nome && !resultado.preco && !resultado.foto;
+
+        // Fallback oficial: a API do Mercado Livre nao depende do IP de origem.
+        if (site === 'mercadolivre' && vazio) {
+            const viaApi = await buscarNoMercadoLivrePelaApi(
+                extrairIdsMercadoLivre(urlFinal, alvo.href)
+            );
+            if (viaApi?.nome) {
+                viaApi.foto = absolutizar(viaApi.foto, urlFinal);
+                return NextResponse.json(viaApi);
+            }
+        }
+
+        if (bloqueado) {
             return NextResponse.json(
                 {
                     erro:
@@ -263,12 +406,7 @@ export async function GET(request) {
             );
         }
 
-        const $ = cheerio.load(html);
-        const resultado = mesclar(extrairJsonLd($), extrairOpenGraph($), extrairDom($, site));
-        resultado.nome = decodificarTexto(resultado.nome);
-        resultado.foto = absolutizar(resultado.foto, urlFinal);
-
-        if (!resultado.nome && !resultado.preco && !resultado.foto) {
+        if (vazio) {
             return NextResponse.json(
                 { erro: 'Não encontrei os dados do produto nessa página. Confira se o link é de um produto.' },
                 { status: 422 }

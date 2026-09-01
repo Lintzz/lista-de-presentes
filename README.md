@@ -19,6 +19,27 @@
 
 ---
 
+## :package: Preenchimento automatico (scraper)
+
+O endpoint `GET /api/extrair?url=<link>` le nome, preco e foto de links do
+Mercado Livre, Amazon e KaBuM!.
+
+O Mercado Livre bloqueia requisicoes vindas de IPs de datacenter (a pagina de
+"trafego suspeito"), entao **em producao** ele so funciona com as credenciais da
+API oficial configuradas. Crie um app gratuito em
+[developers.mercadolivre.com.br](https://developers.mercadolivre.com.br) e defina:
+
+```
+ML_CLIENT_ID=...
+ML_CLIENT_SECRET=...
+```
+
+Valide as credenciais com `node scripts/testar-api-ml.mjs` antes de configurar as
+mesmas variaveis na Vercel (Settings > Environment Variables). Amazon e KaBuM!
+nao precisam de credencial.
+
+---
+
 ## :book: Sobre
 Este projeto foi criado com a motivação de facilitar a organização e o compartilhamento de listas de presentes para eventos e ocasiões especiais. Ele entrega valor ao permitir que os usuários criem suas listas de forma intuitiva e sincronizada.
 
