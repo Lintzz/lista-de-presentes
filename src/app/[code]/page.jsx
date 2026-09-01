@@ -147,7 +147,7 @@ export default function ListView() {
       const data = await response.json();
       
       if (data.erro) { 
-        showModal("Erro", "Não consegui extrair os dados. Verifique o link e tente novamente.", "error"); 
+        showModal("Erro", data.erro, "error"); 
       } else {
         setNewItem((prev) => ({ ...prev, name: data.nome || prev.name, price: data.preco ? parseFloat(data.preco) : prev.price, image: data.foto || prev.image, link1: scraperLink }));
         showModal("Sucesso!", "Preenchido automaticamente!", "success");
