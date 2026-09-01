@@ -173,6 +173,15 @@ function mesclar(...fontes) {
     return resultado;
 }
 
+// O Mercado Livre responde HTTP 200 com uma página de "tráfego suspeito"
+// quando a requisição vem de um IP de datacenter (ex: servidores da Vercel).
+function ehMuroAntiBot(urlFinal, html) {
+    return (
+        /\/gz\/account-verification|\/gz\/security|captcha/i.test(urlFinal) ||
+        /suspicious-traffic-frontend|Trafego suspeito|tráfego suspeito/i.test(html.slice(0, 4000))
+    );
+}
+
 async function buscarHtml(url, userAgent) {
     return fetch(url, {
         redirect: 'follow',
@@ -243,23 +252,21 @@ export async function GET(request) {
             );
         }
 
+        if (ehMuroAntiBot(urlFinal, html)) {
+            return NextResponse.json(
+                {
+                    erro:
+                        'O Mercado Livre bloqueou a consulta automática vinda do servidor. ' +
+                        'Preencha os dados manualmente por enquanto.',
+                },
+                { status: 502 }
+            );
+        }
+
         const $ = cheerio.load(html);
         const resultado = mesclar(extrairJsonLd($), extrairOpenGraph($), extrairDom($, site));
         resultado.nome = decodificarTexto(resultado.nome);
         resultado.foto = absolutizar(resultado.foto, urlFinal);
-
-        if (searchParams.get('debug') === '1') {
-            return NextResponse.json({
-                status: response.status,
-                urlFinal,
-                tamanho: html.length,
-                titulo: $('title').first().text().trim(),
-                temJsonLd: $('script[type="application/ld+json"]').length,
-                temOg: !!$('meta[property="og:title"]').attr('content'),
-                amostra: html.slice(0, 500),
-                resultado,
-            });
-        }
 
         if (!resultado.nome && !resultado.preco && !resultado.foto) {
             return NextResponse.json(
