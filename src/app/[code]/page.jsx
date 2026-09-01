@@ -150,7 +150,8 @@ export default function ListView() {
         showModal("Erro", data.erro, "error"); 
       } else {
         setNewItem((prev) => ({ ...prev, name: data.nome || prev.name, price: data.preco ? parseFloat(data.preco) : prev.price, image: data.foto || prev.image, link1: scraperLink }));
-        showModal("Sucesso!", "Preenchido automaticamente!", "success");
+        if (data.aviso) showModal("Preenchido em parte", data.aviso, "info");
+        else showModal("Sucesso!", "Preenchido automaticamente!", "success");
         setIsScraperModalOpen(false); 
         setScraperLink(""); 
       }

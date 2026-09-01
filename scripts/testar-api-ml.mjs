@@ -50,21 +50,28 @@ if (!respostaToken.ok || !dadosToken.access_token) {
 }
 console.log(`   OK - token valido por ${dadosToken.expires_in}s`);
 
-const itemId = process.argv[2] || 'MLB6229538278';
-console.log(`2) GET /items/${itemId}`);
-const respostaItem = await fetch(`${ML_API}/items/${itemId}`, {
-    headers: { Authorization: `Bearer ${dadosToken.access_token}`, accept: 'application/json' },
-});
-const item = await respostaItem.json();
+// O ML nao libera /items/{id} de terceiros (403 access_denied), entao os dados
+// saem do catalogo: /products/{id} traz nome e foto, /products/{id}/items o preco.
+const productId = process.argv[2] || 'MLBU789105008';
+const cabecalhos = { Authorization: `Bearer ${dadosToken.access_token}`, accept: 'application/json' };
 
-if (!respostaItem.ok) {
-    console.error(`   FALHOU (HTTP ${respostaItem.status}):`, item);
+console.log(`2) GET /products/${productId} (nome e foto)`);
+const respostaProduto = await fetch(`${ML_API}/products/${productId}`, { headers: cabecalhos });
+const produto = respostaProduto.ok ? await respostaProduto.json() : null;
+console.log(
+    produto?.name
+        ? `   OK -> ${produto.name} | foto: ${produto.pictures?.[0]?.secure_url || '(sem foto)'}`
+        : `   sem dados (HTTP ${respostaProduto.status}) - normal em link de anuncio (/up/), o nome vem do slug`
+);
+
+console.log(`3) GET /products/${productId}/items (preco)`);
+const respostaOfertas = await fetch(`${ML_API}/products/${productId}/items`, { headers: cabecalhos });
+const ofertas = respostaOfertas.ok ? await respostaOfertas.json() : null;
+const preco = ofertas?.results?.[0]?.price;
+
+if (!preco) {
+    console.error(`   FALHOU (HTTP ${respostaOfertas.status}):`, ofertas ?? (await respostaOfertas.text()));
     process.exit(1);
 }
-
-console.log('   OK ->', {
-    nome: item.title,
-    preco: item.price,
-    foto: item.pictures?.[0]?.secure_url || item.secure_thumbnail,
-});
+console.log(`   OK -> R$ ${preco}`);
 console.log('\nTudo certo. Configure as mesmas variaveis na Vercel (Settings > Environment Variables).');

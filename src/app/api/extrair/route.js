@@ -270,36 +270,73 @@ async function consultarApiMercadoLivre(caminho, token) {
     return resposta.json();
 }
 
-// Usada quando o scraping do Mercado Livre esbarra no muro anti-bot.
-async function buscarNoMercadoLivrePelaApi(ids) {
-    if (!ids.itemId && !ids.productId) return null;
+// O proprio link carrega o nome do produto no slug; é o ultimo recurso quando a
+// API nao expoe o titulo (anuncios de vendedor, fora do catalogo).
+function nomeDoSlug(...urls) {
+    const fila = urls.filter(Boolean);
 
-    const token = await obterTokenMercadoLivre();
-    if (!token) return null;
+    while (fila.length) {
+        const bruta = fila.shift();
+        let caminho;
+        try {
+            const url = new URL(bruta);
+            // a página de bloqueio carrega o link original em ?go=
+            const destino = url.searchParams.get('go');
+            if (destino) fila.push(destino);
+            caminho = decodeURIComponent(url.pathname);
+        } catch {
+            continue;
+        }
 
-    if (ids.itemId) {
-        const item = await consultarApiMercadoLivre(`/items/${ids.itemId}`, token);
-        if (item?.title) {
-            return {
-                nome: item.title,
-                preco: normalizarPreco(item.price),
-                foto: item.pictures?.[0]?.secure_url || item.secure_thumbnail || item.thumbnail || '',
-            };
+        for (const segmento of caminho.split('/').filter(Boolean)) {
+            if (/^(p|up|sec|gz|social)$/i.test(segmento)) continue;
+            if (/^ML[A-Z]U?\d+$/i.test(segmento)) continue;
+
+            const palavras = segmento
+                .replace(/^ML[A-Z]-?\d+-/i, '')
+                .replace(/-_JM$/i, '')
+                .split('-')
+                .filter(Boolean);
+
+            if (palavras.length < 3) continue;
+            return palavras.map((p) => p[0].toUpperCase() + p.slice(1)).join(' ');
         }
     }
+    return '';
+}
 
-    if (ids.productId) {
+// Usada quando o scraping do Mercado Livre esbarra no muro anti-bot. A API nao
+// libera /items/{id} de terceiros, entao os dados vem do catalogo:
+//   /products/{id}        -> nome e fotos (apenas links de catalogo, /p/)
+//   /products/{id}/items  -> preco da oferta vencedora
+async function buscarNoMercadoLivrePelaApi(ids, urlsParaSlug) {
+    const resultado = { nome: '', preco: '', foto: '' };
+    const token = ids.productId ? await obterTokenMercadoLivre() : '';
+
+    if (token) {
         const produto = await consultarApiMercadoLivre(`/products/${ids.productId}`, token);
         if (produto?.name) {
-            return {
-                nome: produto.name,
-                preco: normalizarPreco(produto.buy_box_winner?.price ?? produto.price),
-                foto: produto.pictures?.[0]?.secure_url || produto.pictures?.[0]?.url || '',
-            };
+            resultado.nome = produto.name;
+            resultado.foto = produto.pictures?.[0]?.secure_url || produto.pictures?.[0]?.url || '';
         }
+
+        const ofertas = await consultarApiMercadoLivre(`/products/${ids.productId}/items`, token);
+        const oferta = ofertas?.results?.[0];
+        resultado.preco =
+            normalizarPreco(oferta?.price) || normalizarPreco(produto?.buy_box_winner?.price);
     }
 
-    return null;
+    if (!resultado.nome) resultado.nome = nomeDoSlug(...urlsParaSlug);
+    if (!resultado.nome && !resultado.preco) return null;
+
+    const faltando = [!resultado.nome && 'o nome', !resultado.preco && 'o preço', !resultado.foto && 'a foto']
+        .filter(Boolean)
+        .join(' e ');
+    if (faltando) {
+        resultado.aviso = `O Mercado Livre não deixa o servidor ler a página. Preenchi o que a API oficial libera — ${faltando} você precisa completar.`;
+    }
+
+    return resultado;
 }
 
 async function buscarHtml(url, userAgent) {
@@ -386,10 +423,9 @@ export async function GET(request) {
 
         // Fallback oficial: a API do Mercado Livre nao depende do IP de origem.
         if (site === 'mercadolivre' && vazio) {
-            const viaApi = await buscarNoMercadoLivrePelaApi(
-                extrairIdsMercadoLivre(urlFinal, alvo.href)
-            );
-            if (viaApi?.nome) {
+            const urls = [urlFinal, alvo.href];
+            const viaApi = await buscarNoMercadoLivrePelaApi(extrairIdsMercadoLivre(...urls), urls);
+            if (viaApi) {
                 viaApi.foto = absolutizar(viaApi.foto, urlFinal);
                 return NextResponse.json(viaApi);
             }

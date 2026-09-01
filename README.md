@@ -24,19 +24,30 @@
 O endpoint `GET /api/extrair?url=<link>` le nome, preco e foto de links do
 Mercado Livre, Amazon e KaBuM!.
 
-O Mercado Livre bloqueia requisicoes vindas de IPs de datacenter (a pagina de
-"trafego suspeito"), entao **em producao** ele so funciona com as credenciais da
-API oficial configuradas. Crie um app gratuito em
-[developers.mercadolivre.com.br](https://developers.mercadolivre.com.br) e defina:
+**Amazon e KaBuM!** funcionam sem nenhuma configuracao.
+
+**Mercado Livre:** o ML responde com a pagina de "trafego suspeito" para
+requisicoes vindas de IPs de datacenter, entao em producao (Vercel) a leitura do
+HTML nunca funciona. Nesse caso a rota cai para a API oficial, que exige um app
+gratuito criado em [developers.mercadolivre.com.br](https://developers.mercadolivre.com.br):
 
 ```
 ML_CLIENT_ID=...
 ML_CLIENT_SECRET=...
 ```
 
-Valide as credenciais com `node scripts/testar-api-ml.mjs` antes de configurar as
-mesmas variaveis na Vercel (Settings > Environment Variables). Amazon e KaBuM!
-nao precisam de credencial.
+O que da para obter pela API (o `GET /items/{id}` de terceiros e bloqueado pelo
+proprio ML, com `403 access_denied`):
+
+| Dado | Origem | Disponivel |
+| --- | --- | --- |
+| Preco | `/products/{id}/items` | sim |
+| Nome | `/products/{id}` ou o slug do proprio link | sim |
+| Foto | `/products/{id}` | so em links de catalogo (`/p/`) |
+
+Quando algum campo nao vem, a resposta traz um `aviso` e o app avisa o que falta
+preencher a mao. Valide as credenciais com `node scripts/testar-api-ml.mjs` antes
+de configurar as mesmas variaveis na Vercel (Settings > Environment Variables).
 
 ---
 
