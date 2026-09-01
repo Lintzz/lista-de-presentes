@@ -248,6 +248,19 @@ export async function GET(request) {
         resultado.nome = decodificarTexto(resultado.nome);
         resultado.foto = absolutizar(resultado.foto, urlFinal);
 
+        if (searchParams.get('debug') === '1') {
+            return NextResponse.json({
+                status: response.status,
+                urlFinal,
+                tamanho: html.length,
+                titulo: $('title').first().text().trim(),
+                temJsonLd: $('script[type="application/ld+json"]').length,
+                temOg: !!$('meta[property="og:title"]').attr('content'),
+                amostra: html.slice(0, 500),
+                resultado,
+            });
+        }
+
         if (!resultado.nome && !resultado.preco && !resultado.foto) {
             return NextResponse.json(
                 { erro: 'Não encontrei os dados do produto nessa página. Confira se o link é de um produto.' },
