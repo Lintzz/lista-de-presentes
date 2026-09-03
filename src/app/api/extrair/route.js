@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { NextResponse } from 'next/server';
+import { MOTIVOS } from '../../../lib/motivos';
 
 export const dynamic = 'force-dynamic';
 
@@ -339,6 +340,34 @@ async function buscarNoMercadoLivrePelaApi(ids, urlsParaSlug) {
     return resultado;
 }
 
+function falha(erro, motivo, status) {
+    return NextResponse.json({ erro, motivo }, { status });
+}
+
+// Para lojas que o extrator não sabe ler (Shopee, Magalu, genéricas): não dá
+// para pegar os dados, mas dá para saber se a página ainda existe.
+async function verificarAlcance(url) {
+    try {
+        let resposta = await fetch(url, {
+            method: 'HEAD',
+            redirect: 'follow',
+            cache: 'no-store',
+            headers: { 'User-Agent': UA_DESKTOP },
+        });
+
+        // Vários servidores não implementam HEAD; nesse caso tentamos um GET.
+        if (resposta.status === 405 || resposta.status === 501) {
+            resposta = await buscarHtml(url, UA_DESKTOP);
+        }
+
+        if (resposta.status === 404 || resposta.status === 410) return MOTIVOS.NAO_ENCONTRADO;
+        return MOTIVOS.SEM_DADOS;
+    } catch {
+        // DNS/conexão pode falhar por motivo passageiro — não é prova de link morto.
+        return MOTIVOS.INACESSIVEL;
+    }
+}
+
 async function buscarHtml(url, userAgent) {
     return fetch(url, {
         redirect: 'follow',
@@ -357,7 +386,7 @@ export async function GET(request) {
     const urlDoProduto = searchParams.get('url');
 
     if (!urlDoProduto) {
-        return NextResponse.json({ erro: 'URL não fornecida' }, { status: 400 });
+        return falha('URL não fornecida', MOTIVOS.LINK_INVALIDO, 400);
     }
 
     let alvo;
@@ -365,13 +394,19 @@ export async function GET(request) {
         alvo = new URL(urlDoProduto.trim());
         if (!/^https?:$/.test(alvo.protocol)) throw new Error('protocolo inválido');
     } catch {
-        return NextResponse.json({ erro: 'Link inválido.' }, { status: 400 });
+        return falha('Link inválido.', MOTIVOS.LINK_INVALIDO, 400);
     }
 
+    // Loja fora das suportadas: não dá para extrair, mas dá para saber se o
+    // link ainda existe — é o que a revisão em massa precisa saber.
     if (!identificarSite(alvo.hostname)) {
-        return NextResponse.json(
-            { erro: 'Site não suportado. Por favor, cole um link do Mercado Livre, Amazon ou KaBuM!.' },
-            { status: 400 }
+        const motivo = await verificarAlcance(alvo.href);
+        return falha(
+            motivo === MOTIVOS.NAO_ENCONTRADO
+                ? 'Essa página não existe mais na loja.'
+                : 'Site não suportado. Por favor, cole um link do Mercado Livre, Amazon ou KaBuM!.',
+            motivo,
+            motivo === MOTIVOS.NAO_ENCONTRADO ? 404 : 400
         );
     }
 
@@ -392,9 +427,13 @@ export async function GET(request) {
         }
 
         if (!response.ok) {
-            return NextResponse.json(
-                { erro: `A loja bloqueou a consulta (HTTP ${response.status}). Preencha manualmente.` },
-                { status: 502 }
+            if (response.status === 404 || response.status === 410) {
+                return falha('Essa página não existe mais na loja.', MOTIVOS.NAO_ENCONTRADO, 404);
+            }
+            return falha(
+                `A loja bloqueou a consulta (HTTP ${response.status}). Preencha manualmente.`,
+                MOTIVOS.BLOQUEADO,
+                502
             );
         }
 
@@ -403,9 +442,10 @@ export async function GET(request) {
         const urlFinal = response.url || alvo.href;
         const site = identificarSite(new URL(urlFinal).hostname);
         if (!site) {
-            return NextResponse.json(
-                { erro: 'Site não suportado. Por favor, cole um link do Mercado Livre, Amazon ou KaBuM!.' },
-                { status: 400 }
+            return falha(
+                'Site não suportado. Por favor, cole um link do Mercado Livre, Amazon ou KaBuM!.',
+                MOTIVOS.SEM_DADOS,
+                400
             );
         }
 
@@ -427,31 +467,30 @@ export async function GET(request) {
             const viaApi = await buscarNoMercadoLivrePelaApi(extrairIdsMercadoLivre(...urls), urls);
             if (viaApi) {
                 viaApi.foto = absolutizar(viaApi.foto, urlFinal);
-                return NextResponse.json(viaApi);
+                return NextResponse.json({ ...viaApi, motivo: MOTIVOS.OK });
             }
         }
 
         if (bloqueado) {
-            return NextResponse.json(
-                {
-                    erro:
-                        'O Mercado Livre bloqueou a consulta automática vinda do servidor. ' +
-                        'Preencha os dados manualmente por enquanto.',
-                },
-                { status: 502 }
+            return falha(
+                'O Mercado Livre bloqueou a consulta automática vinda do servidor. ' +
+                    'Preencha os dados manualmente por enquanto.',
+                MOTIVOS.BLOQUEADO,
+                502
             );
         }
 
         if (vazio) {
-            return NextResponse.json(
-                { erro: 'Não encontrei os dados do produto nessa página. Confira se o link é de um produto.' },
-                { status: 422 }
+            return falha(
+                'Não encontrei os dados do produto nessa página. Confira se o link é de um produto.',
+                MOTIVOS.SEM_DADOS,
+                422
             );
         }
 
-        return NextResponse.json(resultado);
+        return NextResponse.json({ ...resultado, motivo: MOTIVOS.OK });
     } catch (error) {
         console.error('Erro ao extrair:', error);
-        return NextResponse.json({ erro: 'Falha ao acessar o link da loja.' }, { status: 500 });
+        return falha('Falha ao acessar o link da loja.', MOTIVOS.INACESSIVEL, 500);
     }
 }

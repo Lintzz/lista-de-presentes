@@ -72,7 +72,7 @@ export function GlobalProvider({ children }) {
             <div className="global-modal-actions">
               {modal.onConfirm ? (
                 <>
-                  <button onClick={closeModal} className="btn-primary">
+                  <button onClick={closeModal} className="btn-ghost">
                     Cancelar
                   </button>
                   <button
@@ -86,7 +86,7 @@ export function GlobalProvider({ children }) {
                   </button>
                 </>
               ) : (
-                <button onClick={closeModal} className="btn-modal-understand">
+                <button onClick={closeModal} className="btn-primary">
                   Entendi
                 </button>
               )}

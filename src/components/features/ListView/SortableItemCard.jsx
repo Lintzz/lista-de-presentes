@@ -4,9 +4,12 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Archive, ArchiveRestore, ChevronLeft, ChevronRight } from "lucide-react";
 import { StoreIcon, getStoreStyle } from "../../ui/StoreIcon";
 
+const prioClass = (priority) =>
+  priority === "Alta" ? "prio-high" : priority === "Média" ? "prio-med" : "prio-low";
+
 export function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnabled }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: id, disabled: !isDragEnabled });
-  
+
   // Controle do Carrossel para itens com Variação
   const [varIndex, setVarIndex] = useState(0);
 
@@ -34,11 +37,19 @@ export function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnab
     setVarIndex(prev => prev === item.variations.length - 1 ? 0 : prev + 1);
   };
 
+  const storeLinks = hasVariations
+    ? (currentVariation?.link ? [currentVariation.link] : [])
+    : [item.link1, item.link2, item.link3].filter(Boolean);
+
+  // A revisão de links marca o item quando todos os links dele morreram.
+  // Só o dono vê o estado esmaecido — é uma pendência dele, não do visitante.
+  const precisaDeLink = !!item.needsLink && isOwner;
+
   return (
-    <div ref={setNodeRef} style={style} className={`gift-card ${isDragging ? "dragging" : ""} ${isGifted && !isOwner && !isGiver ? "gifted" : ""}`}>
+    <div ref={setNodeRef} style={style} className={`gift-card ${isDragging ? "dragging" : ""} ${isLocked ? "gifted" : ""} ${precisaDeLink ? "needs-link" : ""}`}>
       {isDragEnabled && (
         <div {...attributes} {...listeners} className="drag-handle">
-          <GripVertical size={20} />
+          <GripVertical size={18} />
         </div>
       )}
 
@@ -46,19 +57,19 @@ export function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnab
         {displayImage ? (
           <img src={displayImage} alt={displayName} className="gift-img" />
         ) : (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'var(--color-text-muted)' }}>Sem imagem</div>
+          <div className="gift-img-empty">sem foto</div>
         )}
-        
+
         {/* Badge de Categoria Fixa */}
-        <div className="gift-badge">{item.category}</div>
+        {item.category && <div className="gift-badge">{item.category}</div>}
 
         {/* Setas do Carrossel e Contador de Opções */}
         {hasVariations && item.variations.length > 1 && (
           <>
-            <button onClick={handlePrev} className="carousel-btn left"><ChevronLeft size={20} /></button>
-            <button onClick={handleNext} className="carousel-btn right"><ChevronRight size={20} /></button>
+            <button onClick={handlePrev} className="carousel-btn left"><ChevronLeft size={18} /></button>
+            <button onClick={handleNext} className="carousel-btn right"><ChevronRight size={18} /></button>
             <div className="carousel-indicator">
-              Opção {varIndex + 1} de {item.variations.length}
+              {varIndex + 1} / {item.variations.length}
             </div>
           </>
         )}
@@ -66,83 +77,71 @@ export function SortableItemCard({ id, item, isOwner, user, handlers, isDragEnab
 
       <div className="gift-details">
         <div className="gift-title-row">
-          <h3 className="gift-name">
-            {displayName}
-            {item.size && <span className="tag-size">Tam: {item.size}</span>}
-            {item.voltage && <span className="tag-volt">{item.voltage}</span>}
-          </h3>
+          <div className="gift-title-box">
+            <h3 className="gift-name">{displayName}</h3>
+            <div className="gift-tags">
+              {item.priority && <span className={`tag-prio ${prioClass(item.priority)}`}>Prioridade {item.priority.toLowerCase()}</span>}
+              {item.size && <span className="tag-size">Tam. {item.size}</span>}
+              {item.voltage && <span className="tag-volt">{item.voltage}</span>}
+              {item.category && <span className="gift-category">{item.category}</span>}
+            </div>
+          </div>
+
           <div className="gift-price-box">
-            {displayPrice && <span className="gift-price">R$ {displayPrice}</span>}
-            <span className={`tag-prio ${item.priority === "Alta" ? "prio-high" : item.priority === "Média" ? "prio-med" : "prio-low"}`}>
-              {item.priority}
-            </span>
+            {displayPrice ? <p className="gift-price">R$ {displayPrice}</p> : null}
           </div>
         </div>
 
-        <p className="gift-obs">Obs: {item.obs || "Nenhuma."}</p>
+        {item.obs && <p className="gift-obs">{item.obs}</p>}
 
-        {/* Renderização condicional dos links: Se tiver variações exibe o link da variação atual, senão exibe os 3 links principais */}
-        <div className="stores-list">
-          {hasVariations ? (
-             currentVariation && currentVariation.link && (
-                <a 
-                  href={isLocked ? undefined : currentVariation.link} 
-                  target={isLocked ? undefined : "_blank"} 
-                  rel={isLocked ? undefined : "noreferrer"} 
-                  className={`store-btn ${getStoreStyle(currentVariation.link)?.className || "store-gen"}`}
-                  style={isLocked ? { pointerEvents: 'none', filter: 'grayscale(100%)', opacity: 0.6 } : {}}
-                  onClick={isLocked ? (e) => e.preventDefault() : undefined}
-                >
-                  <StoreIcon url={currentVariation.link} /> {getStoreStyle(currentVariation.link)?.name || "Ver Loja"}
-                </a>
-             )
-          ) : (
-             [item.link1, item.link2, item.link3].filter(Boolean).map((link, idx) => {
-               const sInfo = getStoreStyle(link) || { name: "Visitar Loja", className: "store-gen" };
-               return (
-                 <a 
-                   key={idx} 
-                   href={isLocked ? undefined : link} 
-                   target={isLocked ? undefined : "_blank"} 
-                   rel={isLocked ? undefined : "noreferrer"} 
-                   className={`store-btn ${sInfo.className}`}
-                   style={isLocked ? { pointerEvents: 'none', filter: 'grayscale(100%)', opacity: 0.6 } : {}}
-                   onClick={isLocked ? (e) => e.preventDefault() : undefined}
-                 >
-                   <StoreIcon url={link} /> {sInfo.name}
-                 </a>
-               );
-             })
-          )}
-        </div>
+        {precisaDeLink && (
+          <div className="needs-link-aviso">
+            <span>Os links deste presente saíram do ar. Cadastre um novo.</span>
+            <button onClick={() => handlers.handleEditItem(item)} className="btn-small bg-info">Adicionar link</button>
+          </div>
+        )}
 
         <div className="gift-footer">
-          {isOwner ? (
-            <div style={{display:'flex', gap:'0.5rem', width:'100%', justifyContent:'space-between', flexWrap:'wrap'}}>
-              <button onClick={() => handlers.handleToggleArchive(item)} style={{display:'flex', alignItems:'center', gap:'0.25rem', background:'transparent', border:'none', color:'var(--color-text-muted)', cursor:'pointer', fontSize:'0.875rem'}}>
-                {item.isArchived ? <><ArchiveRestore size={16} /> Restaurar</> : <><Archive size={16} /> Arquivar</>}
-              </button>
-              <div style={{display:'flex', gap:'0.5rem', flexWrap:'wrap'}}>
+          <div className="stores-list">
+            {storeLinks.map((link, idx) => {
+              const sInfo = getStoreStyle(link) || { name: "Visitar Loja", className: "store-gen" };
+              return (
+                <a
+                  key={idx}
+                  href={isLocked ? undefined : link}
+                  target={isLocked ? undefined : "_blank"}
+                  rel={isLocked ? undefined : "noreferrer"}
+                  className={`store-btn ${sInfo.className} ${isLocked ? "locked" : ""}`}
+                  onClick={isLocked ? (e) => e.preventDefault() : undefined}
+                >
+                  <StoreIcon url={link} /> {sInfo.name}
+                </a>
+              );
+            })}
+          </div>
+
+          <div className="gift-actions">
+            {isOwner ? (
+              <>
+                <button onClick={() => handlers.handleToggleArchive(item)} className="btn-archive">
+                  {item.isArchived ? <><ArchiveRestore size={16} /> Restaurar</> : <><Archive size={16} /> Arquivar</>}
+                </button>
                 <button onClick={() => handlers.handleEditItem(item)} className="btn-small bg-info">Editar</button>
                 <button onClick={() => handlers.handleOwnerUnmark(item.id)} className="btn-small bg-error">Não ganhei</button>
                 <button onClick={() => handlers.handleMarkReceived(item.id)} className="btn-small bg-success">Já ganhei</button>
-              </div>
-            </div>
-          ) : (
-            <>
-              {isGifted ? (
-                isGiver ? (
-                  <button onClick={() => handlers.handleUnmarkGift(item)} className="btn-small bg-error" style={{border:'1px solid var(--color-border)'}}>Desmarcar (Você vai dar)</button>
-                ) : (
-                  <span style={{fontSize:'0.875rem', fontWeight:'700', padding:'0.5rem', backgroundColor:'var(--color-page-bg)', border:'1px solid var(--color-border)', borderRadius:'0.25rem'}}>Já vão dar ({item.giftedBy})</span>
-                )
+              </>
+            ) : isGifted ? (
+              isGiver ? (
+                <button onClick={() => handlers.handleUnmarkGift(item)} className="btn-small bg-error">Desmarcar (você vai dar)</button>
               ) : (
-                <button onClick={() => handlers.handleMarkGiftClick(item.id)} className="btn-primary" style={{backgroundColor:'var(--color-success-bg)', color:'var(--color-success-text)'}}>
-                  {item.isGroup ? "Vou dar esta opção!" : "Vou dar este presente!"}
-                </button>
-              )}
-            </>
-          )}
+                <span className="gift-claimed">Já vão dar ({item.giftedBy})</span>
+              )
+            ) : (
+              <button onClick={() => handlers.handleMarkGiftClick(item.id)} className="btn-claim">
+                {item.isGroup ? "Vou dar esta opção!" : "Vou dar este presente!"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

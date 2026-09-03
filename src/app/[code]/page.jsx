@@ -1,6 +1,6 @@
 "use client";
 
-// src/pages/ListView/index.jsx
+// src/app/[code]/page.jsx
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -10,15 +10,13 @@ import { collection, query, where, updateDoc, doc, arrayUnion, onSnapshot, getDo
 import { useGlobal } from "../../context/GlobalContext";
 import { useAuth } from "../../context/AuthContext";
 
+import { RefreshCw } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-// IMPORTANTE: Adicionados ChevronLeft e ChevronRight
-import { Archive, ArchiveRestore } from "lucide-react";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { MOTIVOS, ehLinkMorto, TEXTO_MOTIVO } from "../../lib/motivos";
 import "../../styles/ListView.css";
 
 import { SortableItemCard } from "../../components/features/ListView/SortableItemCard";
-import { StoreIcon, getStoreStyle } from "../../components/ui/StoreIcon";
 
 const THEME_COLORS = {
   blue: { border: "var(--list-blue-border)" },
@@ -30,8 +28,56 @@ const THEME_COLORS = {
 };
 
 const CATEGORIES = ["Brinquedos", "Lego", "Roupas", "Calçados", "Eletrônicos", "Livros", "Casa", "Beleza", "Acessórios", "Games", "Outros"];
+const PRIORITIES = ["Alta", "Média", "Baixa"];
 
+const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
+// Links de um item, já normalizados: item comum usa link1..3, item com
+// variações usa o link de cada opção.
+const linksDoItem = (item) =>
+  (item.isGroup
+    ? (item.variations || []).map((v, varIndex) => ({ url: v.link, varIndex }))
+    : ["link1", "link2", "link3"].map((campo) => ({ url: item[campo], campo }))
+  ).filter((alvo) => alvo.url);
+
+const temAlgumLink = (item) => linksDoItem(item).length > 0;
+
+// Roda as tarefas com concorrência limitada — o extrator faz HTTP de verdade.
+async function comLimite(tarefas, limite, aoConcluir) {
+  const resultados = [];
+  let proxima = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limite, tarefas.length) }, async () => {
+      while (proxima < tarefas.length) {
+        const indice = proxima++;
+        resultados[indice] = await tarefas[indice]();
+        aoConcluir?.();
+      }
+    })
+  );
+  return resultados;
+}
+
+async function checarLink(url) {
+  try {
+    const resposta = await fetch(`/api/extrair?url=${encodeURIComponent(url)}`);
+    const dados = await resposta.json();
+    return {
+      motivo: dados.motivo || (dados.erro ? MOTIVOS.INACESSIVEL : MOTIVOS.OK),
+      preco: dados.preco ? parseFloat(dados.preco) : null,
+      foto: dados.foto || "",
+    };
+  } catch {
+    return { motivo: MOTIVOS.INACESSIVEL, preco: null, foto: "" };
+  }
+}
+
+// Item com variações não tem preço próprio: usamos o da primeira opção.
+const itemPrice = (item) => {
+  if (item.isGroup && item.variations?.length) return parseFloat(item.variations[0].price) || 0;
+  return parseFloat(item.price) || 0;
+};
 
 export default function ListView() {
   const { user } = useAuth();
@@ -49,6 +95,11 @@ export default function ListView() {
   const [scraperLink, setScraperLink] = useState("");
   const [isScraping, setIsScraping] = useState(false);
 
+  // Revisão em massa dos links
+  const [revisao, setRevisao] = useState(null); // { itens, naoChecados, feito, total }
+  const [isRevisando, setIsRevisando] = useState(false);
+  const [progresso, setProgresso] = useState({ feito: 0, total: 0 });
+
   const [sortBy, setSortBy] = useState("manual");
   const [filterCategory, setFilterCategory] = useState("Todas");
   const [viewMode, setViewMode] = useState("active");
@@ -58,18 +109,15 @@ export default function ListView() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   useEffect(() => {
-    const fetchList = async () => {
-      const q = query(collection(db, "lists"), where("code", "==", code.toUpperCase()));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (!snapshot.empty) {
-          const docData = snapshot.docs[0];
-          setListData({ id: docData.id, ...docData.data() });
-        } else setListData(null);
-        setLoading(false);
-      });
-      return () => unsubscribe();
-    };
-    fetchList();
+    const q = query(collection(db, "lists"), where("code", "==", code.toUpperCase()));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const docData = snapshot.docs[0];
+        setListData({ id: docData.id, ...docData.data() });
+      } else setListData(null);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, [code]);
 
   useEffect(() => {
@@ -97,7 +145,6 @@ export default function ListView() {
     setNewItem({ ...item, image: item.image || "", link1: item.link1 || "", link2: item.link2 || "", link3: item.link3 || "", obs: item.obs || "", priority: item.priority || "Média", category: item.category || "Outros", size: item.size || "", voltage: item.voltage || "", isGroup: item.isGroup || false, variations: item.variations || [], isArchived: item.isArchived || false });
     setEditingId(item.id);
     setIsFormOpen(true);
-    window.scrollTo({ top: 150, behavior: "smooth" });
   };
 
   const resetForm = () => {
@@ -119,9 +166,13 @@ export default function ListView() {
     e.preventDefault();
     if (!newItem.name || (!newItem.isGroup && !newItem.price)) { showModal("Erro", "Nome e valor são obrigatórios.", "error"); return; }
     const listRef = doc(db, "lists", listData.id);
+    // A marcação só é apagada, nunca criada aqui: quem marca é a revisão de
+    // links. Assim um item que o dono criou sem link de propósito não fica
+    // esmaecido na lista.
+    const voltouATerLink = temAlgumLink(newItem);
     try {
       if (editingId) {
-        const updatedItems = listData.items.map((item) => item.id === editingId ? { ...item, ...newItem, price: parseFloat(newItem.price || 0) } : item);
+        const updatedItems = listData.items.map((item) => item.id === editingId ? { ...item, ...newItem, price: parseFloat(newItem.price || 0), needsLink: voltouATerLink ? false : !!item.needsLink } : item);
         await updateDoc(listRef, { items: updatedItems });
         showModal("Atualizado!", "Item editado.", "success");
       } else {
@@ -134,31 +185,161 @@ export default function ListView() {
   };
 
   const handleAutoFill = async () => {
-    if (!scraperLink) { 
-      showModal("Ops!", "Cole o link primeiro antes de buscar.", "info"); 
-      return; 
+    if (!scraperLink) {
+      showModal("Ops!", "Cole o link primeiro antes de buscar.", "info");
+      return;
     }
-    
+
     setIsScraping(true);
-    
+
     try {
       const API_URL = "/api/extrair";
       const response = await fetch(`${API_URL}?url=${encodeURIComponent(scraperLink)}`);
       const data = await response.json();
-      
-      if (data.erro) { 
-        showModal("Erro", data.erro, "error"); 
+
+      if (data.erro) {
+        showModal("Erro", data.erro, "error");
       } else {
         setNewItem((prev) => ({ ...prev, name: data.nome || prev.name, price: data.preco ? parseFloat(data.preco) : prev.price, image: data.foto || prev.image, link1: scraperLink }));
         if (data.aviso) showModal("Preenchido em parte", data.aviso, "info");
         else showModal("Sucesso!", "Preenchido automaticamente!", "success");
-        setIsScraperModalOpen(false); 
-        setScraperLink(""); 
+        setIsScraperModalOpen(false);
+        setScraperLink("");
       }
-    } catch (error) { 
-      showModal("Erro", "Falha ao conectar com o extrator.", "error"); 
+    } catch (error) {
+      showModal("Erro", "Falha ao conectar com o extrator.", "error");
     } finally {
-      setIsScraping(false); 
+      setIsScraping(false);
+    }
+  };
+
+  // === REVISÃO DOS LINKS ===
+  // Checa cada link dos presentes ativos, monta um relatório e só grava depois
+  // que o dono confirmar. Link só é removido quando a loja prova que a página
+  // morreu (404/410) ou a URL é inválida — loja não suportada ou que bloqueou o
+  // robô é preservada e listada como "não deu pra checar".
+  const handleRevisarLinks = async () => {
+    const itens = (listData.items || []).filter((i) => !i.isArchived && temAlgumLink(i));
+    if (!itens.length) {
+      showModal("Nada para revisar", "Nenhum presente ativo tem link cadastrado.", "info");
+      return;
+    }
+
+    const alvos = itens.flatMap((item) => linksDoItem(item).map((alvo) => ({ ...alvo, item })));
+    setIsRevisando(true);
+    setProgresso({ feito: 0, total: alvos.length });
+
+    try {
+      const respostas = await comLimite(
+        alvos.map((alvo) => () => checarLink(alvo.url)),
+        3,
+        () => setProgresso((p) => ({ ...p, feito: p.feito + 1 }))
+      );
+      const checados = alvos.map((alvo, i) => ({ ...alvo, ...respostas[i] }));
+
+      const naoChecados = [];
+      const relatorio = [];
+
+      for (const item of itens) {
+        const meus = checados.filter((c) => c.item.id === item.id);
+        const mortos = meus.filter((c) => ehLinkMorto(c.motivo));
+        const vivos = meus.filter((c) => !ehLinkMorto(c.motivo));
+
+        meus
+          .filter((c) => c.motivo !== MOTIVOS.OK && !ehLinkMorto(c.motivo))
+          .forEach((c) => naoChecados.push({ nome: item.name, url: c.url, motivo: c.motivo }));
+
+        const entrada = {
+          id: item.id,
+          nome: item.name,
+          remover: mortos.map((c) => c.url),
+          ficaSemLink: meus.length > 0 && vivos.length === 0,
+          precoAntes: item.price,
+          precoNovo: null,
+          fotoNova: "",
+          variacoes: {},
+        };
+
+        if (item.isGroup) {
+          // Cada opção tem preço e foto próprios: atualiza uma a uma.
+          for (const c of meus) {
+            if (c.motivo !== MOTIVOS.OK) continue;
+            const atual = item.variations[c.varIndex] || {};
+            const mudancas = {};
+            if (c.preco && parseFloat(atual.price || 0) !== c.preco) mudancas.price = c.preco;
+            if (c.foto && !atual.image) mudancas.image = c.foto;
+            if (Object.keys(mudancas).length) entrada.variacoes[c.varIndex] = { ...mudancas, nome: atual.name };
+          }
+        } else {
+          const bom = meus.find((c) => c.motivo === MOTIVOS.OK && c.preco);
+          if (bom && parseFloat(item.price || 0) !== bom.preco) entrada.precoNovo = bom.preco;
+
+          const comFoto = meus.find((c) => c.motivo === MOTIVOS.OK && c.foto);
+          if (comFoto && !item.image) entrada.fotoNova = comFoto.foto;
+        }
+
+        const mudouAlgo =
+          entrada.remover.length ||
+          entrada.precoNovo !== null ||
+          entrada.fotoNova ||
+          Object.keys(entrada.variacoes).length;
+
+        if (mudouAlgo) relatorio.push(entrada);
+      }
+
+      setRevisao({ itens: relatorio, naoChecados, total: alvos.length });
+    } catch (error) {
+      console.error(error);
+      showModal("Erro", "Falha ao revisar os links.", "error");
+    } finally {
+      setIsRevisando(false);
+    }
+  };
+
+  const handleAplicarRevisao = async () => {
+    if (!revisao) return;
+    const porId = Object.fromEntries(revisao.itens.map((e) => [e.id, e]));
+
+    const updatedItems = listData.items.map((item) => {
+      const entrada = porId[item.id];
+      if (!entrada) return item;
+
+      const novo = { ...item };
+      if (entrada.precoNovo !== null) novo.price = entrada.precoNovo;
+      if (entrada.fotoNova) novo.image = entrada.fotoNova;
+
+      if (item.isGroup) {
+        novo.variations = (item.variations || []).map((v, i) => {
+          const mudancas = entrada.variacoes[i];
+          const atualizada = mudancas ? { ...v, ...(mudancas.price ? { price: mudancas.price } : {}), ...(mudancas.image ? { image: mudancas.image } : {}) } : { ...v };
+          if (entrada.remover.includes(v.link)) atualizada.link = "";
+          return atualizada;
+        });
+      } else {
+        for (const campo of ["link1", "link2", "link3"]) {
+          if (item[campo] && entrada.remover.includes(item[campo])) novo[campo] = "";
+        }
+      }
+
+      // Marca o item para o dono voltar e cadastrar um link novo.
+      novo.needsLink = entrada.ficaSemLink;
+      return novo;
+    });
+
+    try {
+      await updateDoc(doc(db, "lists", listData.id), { items: updatedItems });
+      const semLink = revisao.itens.filter((e) => e.ficaSemLink).length;
+      setRevisao(null);
+      showModal(
+        "Revisão aplicada!",
+        semLink
+          ? `${semLink} ${semLink === 1 ? "presente ficou" : "presentes ficaram"} sem link e ${semLink === 1 ? "está marcado" : "estão marcados"} na lista.`
+          : "Links e preços atualizados.",
+        "success"
+      );
+    } catch (error) {
+      console.error(error);
+      showModal("Erro", "Não foi possível salvar a revisão.", "error");
     }
   };
 
@@ -203,7 +384,7 @@ export default function ListView() {
 
   const getFilteredItems = () => {
     if (!listData?.items) return [];
-    
+
     let items = listData.items.filter((item) => {
       const matchArchive = viewMode === "archived" ? item.isArchived : !item.isArchived;
       const matchCategory = filterCategory === "Todas" || (item.category || "Outros") === filterCategory;
@@ -214,197 +395,125 @@ export default function ListView() {
 
     if (sortBy === "value") items.sort((a, b) => a.price - b.price);
     else if (sortBy === "priority") { const pMap = { Alta: 3, Média: 2, Baixa: 1 }; items.sort((a, b) => pMap[b.priority] - pMap[a.priority]); }
-    
+
     return items;
   };
+
+  if (loading) return <div className="list-view-message">Carregando lista...</div>;
+  if (!listData) return <div className="list-view-message">Lista não encontrada :(</div>;
 
   const filteredItems = getFilteredItems();
   const isDragEnabled = isOwner && filterCategory === "Todas" && sortBy === "manual" && viewMode === "active";
   const handlers = { handleEditItem, handleOwnerUnmark, handleMarkReceived, handleMarkGiftClick, handleUnmarkGift, handleToggleArchive };
 
-  if (loading) return <div style={{textAlign:'center', padding:'3rem', color:'var(--color-text-body)'}}>Carregando lista...</div>;
-  if (!listData) return <div style={{textAlign:'center', padding:'3rem', color:'var(--color-text-body)'}}>Lista não encontrada :(</div>;
+  const activeItems = listData.items?.filter((i) => !i.isArchived) || [];
+  // Só é calculado/exibido para visitantes (ver header abaixo).
+  const reservedCount = activeItems.filter((i) => i.giftedBy).length;
+  const totalValue = activeItems.reduce((acc, i) => acc + itemPrice(i), 0);
 
   return (
-    <div className="list-view-container">
-      {/* Modal do Extrator */}
-      {isScraperModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-animate">
-            <h3 className="modal-title" style={{ marginBottom: '1rem' }}>Preenchimento Automático</h3>
-            <p className="modal-desc">Cole o link do produto abaixo para buscarmos o Nome, Preço e Foto.</p>
-            
-            <input 
-              type="text" 
-              placeholder="Cole o link aqui..." 
-              value={scraperLink} 
-              onChange={(e) => setScraperLink(e.target.value)} 
-              className="input-field" 
-              style={{ marginBottom: '1.5rem' }}
-              disabled={isScraping}
-            />
-
-            {isScraping ? (
-              <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-                <div className="spinner"></div>
-                <p style={{ marginTop: '1rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                  Buscando dados na loja...<br/><strong>Isso pode demorar um pouco, por favor aguarde.</strong>
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                <button type="button" onClick={() => setIsScraperModalOpen(false)} className="btn-primary" style={{ backgroundColor: 'transparent', color: 'var(--prio-high)', border: '1px solid var(--color-border)' }}>
-                  Cancelar
-                </button>
-                <button type="button" onClick={handleAutoFill} className="btn-primary">
-                  Buscar Dados
-                </button>
-              </div>
+    <div className="list-view-container" style={{ "--accent": listTheme.border }}>
+      {/* === CABEÇALHO DA LISTA === */}
+      <div className="list-header-card">
+        <div className="list-header-main">
+          <div>
+            <p className="list-header-eyebrow">Lista de {listData.ownerName}</p>
+            <h1 className="list-header-title">{listData.name}</h1>
+            {!isOwner && (
+              <Link href={`/perfil?uid=${listData.ownerId}&fromList=${listData.code}`} className="list-header-profile">
+                Ver perfil de {listData.ownerName}
+              </Link>
             )}
           </div>
-        </div>
-      )}
 
-      <div className="list-header-card" style={{ borderLeftColor: listTheme.border }}>
-        <div>
-          <h1 className="list-header-title">{listData.name}</h1>
-          <p className="list-header-info">Criado por: <span>{listData.ownerName}</span></p>
-          {!isOwner && <div style={{marginTop:'0.5rem', fontSize:'0.875rem'}}><Link to={`/perfil?uid=${listData.ownerId}&fromList=${listData.code}`} style={{color:'var(--color-primary)'}}>Ver perfil</Link></div>}
-        </div>
-        <div className="header-actions">
-          {isOwner && (
-            <div onClick={handleCopyCode} className="action-box">
-              <span className="code-label">Código</span>
-              <span className="code-value">{listData.code}</span>
+          <div className="list-stats">
+            <div>
+              <p className="stat-value">{activeItems.length}</p>
+              <p className="stat-label">presentes</p>
             </div>
-          )}
-          <button onClick={handleShare} className="action-box" style={{border:'1px solid var(--color-border)', height:'100%', padding:'0.75rem'}}>
-             <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-             </svg>
+            {/* O dono não vê quantos já foram reservados — isso entregaria a surpresa. */}
+            {!isOwner && (
+              <>
+                <div className="list-stats-sep" />
+                <div>
+                  <p className="stat-value" style={{ color: "var(--color-success-text)" }}>{reservedCount}</p>
+                  <p className="stat-label">reservados</p>
+                </div>
+              </>
+            )}
+            <div className="list-stats-sep" />
+            <div>
+              <p className="stat-value">{currency.format(totalValue)}</p>
+              <p className="stat-label">total da lista</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="header-actions">
+          <button onClick={handleCopyCode} className="action-box" title="Copiar código">
+            <span className="code-label">código</span>
+            <span className="code-value mono">{listData.code}</span>
+          </button>
+          <button onClick={handleShare} className="btn-primary btn-share">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            <span className="btn-share-label">Compartilhar</span>
           </button>
         </div>
       </div>
 
-      {isOwner && (
-        <>
-          {!isFormOpen ? (
-            <button onClick={() => setIsFormOpen(true)} className="btn-add-item">
-              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
-              <span>Adicionar Presente</span>
-            </button>
-          ) : (
-            <div className="form-card modal-animate">
-              <div style={{display:'flex', justifyContent:'space-between'}}>
-                <h3 style={{fontWeight:'bold', fontSize:'1.125rem', color:'var(--color-card-heading)'}}>{editingId ? "Editar" : "Novo"}</h3>
-                <button onClick={resetForm} style={{background:'transparent', border:'none', color:'var(--prio-high)', cursor:'pointer', fontWeight:'bold'}}>Cancelar</button>
-              </div>
-              <form onSubmit={handleSaveItem} className="form-grid">
-                <div className="form-grid-2">
-                  <input maxLength={50} placeholder="Nome do item" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} className="input-field" />
-                  <input placeholder="URL da Foto" value={newItem.image} onChange={(e) => setNewItem({ ...newItem, image: e.target.value })} className="input-field" />
-                </div>
-
-                <div className="form-grid-4">
-                  <div>
-                    <label className="filter-label">Categoria</label>
-                    <select value={newItem.category} onChange={handleCategoryChange} className="input-field"><option value="Outros">Outros</option>{CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}</select>
-                  </div>
-                  {(newItem.category === "Roupas" || newItem.category === "Calçados") && (<div><label className="filter-label">Tamanho</label><input value={newItem.size} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="input-field" /></div>)}
-                  {["Eletrônicos", "Casa", "Beleza"].includes(newItem.category) && (<div><label className="filter-label">Voltagem</label><select value={newItem.voltage} onChange={(e) => setNewItem({ ...newItem, voltage: e.target.value })} className="input-field"><option value="">Selecione...</option><option value="110v">110v</option><option value="220v">220v</option><option value="Bivolt">Bivolt</option></select></div>)}
-                  <div><label className="filter-label">Prioridade</label><select value={newItem.priority} onChange={(e) => setNewItem({ ...newItem, priority: e.target.value })} className="input-field"><option value="Alta">Alta</option><option value="Média">Média</option><option value="Baixa">Baixa</option></select></div>
-                  {!newItem.isGroup && (<div><label className="filter-label">Valor (R$)</label><input type="number" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} className="input-field" placeholder="0.00" /></div>)}
-                </div>
-
-                <div className="checkbox-group">
-                  <input type="checkbox" id="isGroup" checked={newItem.isGroup} onChange={(e) => setNewItem({ ...newItem, isGroup: e.target.checked })} style={{width:'1.25rem', height:'1.25rem', cursor:'pointer'}} />
-                  <label htmlFor="isGroup" style={{fontSize:'0.875rem', fontWeight:'600', cursor:'pointer'}}>Este item possui variações (Ex: Cores diferentes)</label>
-                </div>
-            
-                {newItem.isGroup && (
-                  <div className="variations-box">
-                    <h4 style={{fontSize:'0.875rem', fontWeight:'bold', marginBottom:'1rem', marginTop: '0'}}>Opções do Presente</h4>
-                    {newItem.variations.map((v, i) => (
-                      <div key={i} className="variation-item">
-                        <button type="button" onClick={() => handleRemoveVariation(i)} className="btn-remove-var">X</button>
-                        <div><label className="filter-label">Nome da Opção *</label><input value={v.name} onChange={(e) => handleVariationChange(i, "name", e.target.value)} className="input-field" /></div>
-                        <div><label className="filter-label">Preço (R$)</label><input type="number" value={v.price} onChange={(e) => handleVariationChange(i, "price", e.target.value)} className="input-field" /></div>
-                        <div><label className="filter-label">URL da Foto</label><input value={v.image} onChange={(e) => handleVariationChange(i, "image", e.target.value)} className="input-field" /></div>
-                        <div><label className="filter-label">Link da Loja</label><input value={v.link} onChange={(e) => handleVariationChange(i, "link", e.target.value)} className="input-field" /></div>
-                      </div>
-                    ))}
-                    <button type="button" onClick={handleAddVariation} style={{background:'transparent', border:'1px solid var(--color-primary)', color:'var(--color-primary)', padding:'0.5rem 1rem', borderRadius:'0.25rem', fontWeight:'bold', cursor:'pointer'}}>+ Adicionar Nova Opção</button>
-                  </div>
-                )}
-
-                {!newItem.isGroup && (
-                  <div>
-                    <label className="filter-label" style={{ marginBottom: '0.25rem' }}>Links</label>
-                    <div className="form-grid-4">
-                      <input placeholder="Link 1" value={newItem.link1} onChange={(e) => setNewItem({ ...newItem, link1: e.target.value })} className="input-field" />
-                      <input placeholder="Link 2" value={newItem.link2} onChange={(e) => setNewItem({ ...newItem, link2: e.target.value })} className="input-field" />
-                      <input placeholder="Link 3" value={newItem.link3} onChange={(e) => setNewItem({ ...newItem, link3: e.target.value })} className="input-field" />
-                      
-                      <button type="button" onClick={() => setIsScraperModalOpen(true)} className="btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', height: '100%' }}>
-                        ✨ Preencher usando Link
-                      </button>
-                    </div>
-                  </div>
-                )}
-                <textarea placeholder="Observações" value={newItem.obs} onChange={(e) => setNewItem({ ...newItem, obs: e.target.value })} className="input-field" />
-                <button type="submit" className="btn-primary">{editingId ? "Salvar" : "Adicionar"}</button>
-              </form>
-            </div>
-          )}
-        </>
-      )}
-
-      {isOwner && (
-        <div className="tabs-container">
-          <button onClick={() => setViewMode("active")} className={`tab-btn ${viewMode === "active" ? "active" : ""}`}>Ativos</button>
-          <button onClick={() => setViewMode("archived")} className={`tab-btn ${viewMode === "archived" ? "active" : ""}`} style={{display:'flex', gap:'0.25rem', alignItems:'center'}}>Arquivados <Archive size={14} /></button>
-        </div>
-      )}
-
+      {/* === BARRA DE FILTROS === */}
       <div className="filters-bar">
-        <div className="filter-group">
-          <span className="filter-label">Filtrar:</span>
-          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input-field" style={{padding:'0.5rem'}}>
-            <option value="Todas">Todas</option>
-            {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
-          </select>
-        </div>
-        <div className="filter-group">
-          <span className="filter-label">Ordenar:</span>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="input-field" style={{padding:'0.5rem'}}>
-            <option value="manual">Padrão</option>
-            <option value="priority">Prioridade</option>
-            <option value="value">Valor</option>
-          </select>
-        </div>
-        
-        {/* Agora a caixinha só aparece se a pessoa NÃO for a dona da lista */}
+        {isOwner && (
+          <>
+            <button onClick={() => setViewMode("active")} className={`btn-pill ${viewMode === "active" ? "active" : ""}`}>Ativos</button>
+            <button onClick={() => setViewMode("archived")} className={`btn-pill ${viewMode === "archived" ? "active" : ""}`}>Arquivados</button>
+          </>
+        )}
+
         {!isOwner && (
-          <div className="filter-group" style={{ marginLeft: window.innerWidth > 768 ? 'auto' : '0' }}>
-            <input 
-              type="checkbox" 
-              id="showAvailable" 
-              checked={showOnlyAvailable} 
-              onChange={(e) => setShowOnlyAvailable(e.target.checked)} 
-              style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }}
-            />
-            <label htmlFor="showAvailable" className="filter-label" style={{ cursor: 'pointer', margin: 0 }}>
-              Ocultar já marcados
-            </label>
-          </div>
+          <button
+            onClick={() => setShowOnlyAvailable((v) => !v)}
+            className={`btn-pill ${showOnlyAvailable ? "active" : ""}`}
+          >
+            Só disponíveis
+          </button>
+        )}
+
+        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="filter-select">
+          <option value="Todas">Todas as categorias</option>
+          {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
+        </select>
+
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="filter-select">
+          <option value="manual">Ordem padrão</option>
+          <option value="priority">Maior prioridade</option>
+          <option value="value">Menor preço</option>
+        </select>
+
+        {isOwner && (
+          <>
+            <button
+              onClick={handleRevisarLinks}
+              disabled={isRevisando}
+              className="btn-pill filters-check"
+              title="Testa cada link, atualiza preço e foto e remove os que morreram"
+            >
+              <RefreshCw size={14} className={isRevisando ? "spin" : ""} />
+              {isRevisando ? `Revisando ${progresso.feito}/${progresso.total}...` : "Revisar links"}
+            </button>
+            <button onClick={() => setIsFormOpen(true)} className="btn-dashed filters-add">+ Adicionar presente</button>
+          </>
         )}
       </div>
 
+      {/* === LISTA DE PRESENTES === */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={filteredItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           <div className="gift-list">
             {filteredItems.length === 0 ? (
-              <div style={{textAlign:'center', padding:'2rem', border:'1px dashed var(--color-border)', borderRadius:'0.5rem', color:'var(--color-text-muted)'}}>Nenhum item encontrado.</div>
+              <div className="gift-list-empty">Nenhum item encontrado.</div>
             ) : (
               filteredItems.map((item) => (
                 <SortableItemCard key={item.id} id={item.id} item={item} isOwner={isOwner} user={user} handlers={handlers} isDragEnabled={isDragEnabled} />
@@ -415,8 +524,230 @@ export default function ListView() {
       </DndContext>
 
       <button onClick={scrollToTop} className={`scroll-top ${!showScrollTop ? "hidden" : ""}`} title="Voltar ao topo">
-        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
       </button>
+
+      {/* === MODAL: FORMULÁRIO DE PRESENTE === */}
+      {isOwner && isFormOpen && (
+        <div className="modal-overlay" onClick={resetForm}>
+          <div className="modal-content modal-wide modal-animate" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">{editingId ? "Editar presente" : "Adicionar presente"}</h3>
+            <p className="modal-desc">Cola o link da loja — a gente preenche o resto.</p>
+
+            <form onSubmit={handleSaveItem} className="form-grid">
+              <div className="form-grid-2">
+                <label className="field">
+                  <span className="field-label">Nome do presente</span>
+                  <input maxLength={50} placeholder="Ex: Fone bluetooth" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} className="input-field" />
+                </label>
+                <label className="field">
+                  <span className="field-label">URL da foto</span>
+                  <input placeholder="https://..." value={newItem.image} onChange={(e) => setNewItem({ ...newItem, image: e.target.value })} className="input-field" />
+                </label>
+              </div>
+
+              <div className="form-grid-4">
+                <label className="field">
+                  <span className="field-label">Categoria</span>
+                  <select value={newItem.category} onChange={handleCategoryChange} className="input-field">
+                    <option value="Outros">Outros</option>
+                    {CATEGORIES.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
+                  </select>
+                </label>
+
+                {(newItem.category === "Roupas" || newItem.category === "Calçados") && (
+                  <label className="field">
+                    <span className="field-label">Tamanho</span>
+                    <input value={newItem.size} onChange={(e) => setNewItem({ ...newItem, size: e.target.value })} className="input-field" />
+                  </label>
+                )}
+
+                {["Eletrônicos", "Casa", "Beleza"].includes(newItem.category) && (
+                  <label className="field">
+                    <span className="field-label">Voltagem</span>
+                    <select value={newItem.voltage} onChange={(e) => setNewItem({ ...newItem, voltage: e.target.value })} className="input-field">
+                      <option value="">Selecione...</option>
+                      <option value="110v">110v</option>
+                      <option value="220v">220v</option>
+                      <option value="Bivolt">Bivolt</option>
+                    </select>
+                  </label>
+                )}
+
+                {!newItem.isGroup && (
+                  <label className="field">
+                    <span className="field-label">Valor (R$)</span>
+                    <input type="number" step="0.01" value={newItem.price} onChange={(e) => setNewItem({ ...newItem, price: e.target.value })} className="input-field" placeholder="0,00" />
+                  </label>
+                )}
+              </div>
+
+              <div className="field">
+                <span className="field-label">Prioridade</span>
+                <div className="prio-group">
+                  {PRIORITIES.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setNewItem({ ...newItem, priority: p })}
+                      className={`prio-option ${newItem.priority === p ? `active prio-${p === "Alta" ? "high" : p === "Média" ? "med" : "low"}` : ""}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="checkbox-group">
+                <input type="checkbox" checked={newItem.isGroup} onChange={(e) => setNewItem({ ...newItem, isGroup: e.target.checked })} />
+                <span>Este item possui variações (Ex: cores diferentes)</span>
+              </label>
+
+              {newItem.isGroup && (
+                <div className="variations-box">
+                  <h4 className="variations-title">Opções do presente</h4>
+                  {newItem.variations.map((v, i) => (
+                    <div key={i} className="variation-item">
+                      <button type="button" onClick={() => handleRemoveVariation(i)} className="btn-remove-var" title="Remover opção">×</button>
+                      <label className="field"><span className="field-label">Nome da opção *</span><input value={v.name} onChange={(e) => handleVariationChange(i, "name", e.target.value)} className="input-field" /></label>
+                      <label className="field"><span className="field-label">Preço (R$)</span><input type="number" step="0.01" value={v.price} onChange={(e) => handleVariationChange(i, "price", e.target.value)} className="input-field" /></label>
+                      <label className="field"><span className="field-label">URL da foto</span><input value={v.image} onChange={(e) => handleVariationChange(i, "image", e.target.value)} className="input-field" /></label>
+                      <label className="field"><span className="field-label">Link da loja</span><input value={v.link} onChange={(e) => handleVariationChange(i, "link", e.target.value)} className="input-field" /></label>
+                    </div>
+                  ))}
+                  <button type="button" onClick={handleAddVariation} className="btn-dashed">+ Adicionar nova opção</button>
+                </div>
+              )}
+
+              {!newItem.isGroup && (
+                <div className="field">
+                  <span className="field-label">Links das lojas</span>
+                  <div className="links-grid">
+                    <input placeholder="Link 1" value={newItem.link1} onChange={(e) => setNewItem({ ...newItem, link1: e.target.value })} className="input-field" />
+                    <input placeholder="Link 2" value={newItem.link2} onChange={(e) => setNewItem({ ...newItem, link2: e.target.value })} className="input-field" />
+                    <input placeholder="Link 3" value={newItem.link3} onChange={(e) => setNewItem({ ...newItem, link3: e.target.value })} className="input-field" />
+                  </div>
+                  <button type="button" onClick={() => setIsScraperModalOpen(true)} className="btn-ghost btn-autofill">
+                    ✨ Preencher usando Link
+                  </button>
+                </div>
+              )}
+
+              <label className="field">
+                <span className="field-label">Observações</span>
+                <textarea rows={3} placeholder="Ex: prefiro algodão pesado, sem estampa grande." value={newItem.obs} onChange={(e) => setNewItem({ ...newItem, obs: e.target.value })} className="input-field" />
+              </label>
+
+              <div className="modal-actions">
+                <button type="button" onClick={resetForm} className="btn-ghost">Cancelar</button>
+                <button type="submit" className="btn-primary">{editingId ? "Salvar" : "Adicionar"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL: RELATÓRIO DA REVISÃO === */}
+      {revisao && (
+        <div className="modal-overlay" onClick={() => setRevisao(null)}>
+          <div className="modal-content modal-wide modal-animate" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Revisão dos links</h3>
+            <p className="modal-desc">
+              {revisao.total} {revisao.total === 1 ? "link checado" : "links checados"}.
+              {revisao.itens.length === 0 ? " Nada para mudar." : " Confira antes de salvar."}
+            </p>
+
+            {revisao.itens.length > 0 && (
+              <ul className="revisao-lista">
+                {revisao.itens.map((entrada) => (
+                  <li key={entrada.id} className={`revisao-item ${entrada.ficaSemLink ? "sem-link" : ""}`}>
+                    <strong className="revisao-nome">{entrada.nome}</strong>
+                    <div className="revisao-mudancas">
+                      {entrada.precoNovo !== null && (
+                        <span className="revisao-tag preco">
+                          {moeda.format(entrada.precoAntes || 0)} → {moeda.format(entrada.precoNovo)}
+                        </span>
+                      )}
+                      {Object.entries(entrada.variacoes).map(([i, m]) => (
+                        <span key={i} className="revisao-tag preco">
+                          {m.nome || `Opção ${Number(i) + 1}`}
+                          {m.price ? `: ${moeda.format(m.price)}` : ""}
+                          {m.image ? " + foto" : ""}
+                        </span>
+                      ))}
+                      {entrada.fotoNova && <span className="revisao-tag foto">+ foto</span>}
+                      {entrada.remover.length > 0 && (
+                        <span className="revisao-tag remove">
+                          − {entrada.remover.length} {entrada.remover.length === 1 ? "link quebrado" : "links quebrados"}
+                        </span>
+                      )}
+                      {entrada.ficaSemLink && <span className="revisao-tag alerta">fica sem link</span>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {revisao.naoChecados.length > 0 && (
+              <details className="revisao-nao-checados">
+                <summary>
+                  {revisao.naoChecados.length} {revisao.naoChecados.length === 1 ? "link não pôde" : "links não puderam"} ser
+                  checado{revisao.naoChecados.length === 1 ? "" : "s"} — nenhum será removido
+                </summary>
+                <ul>
+                  {revisao.naoChecados.map((n, i) => (
+                    <li key={i}>
+                      <strong>{n.nome}</strong> — {TEXTO_MOTIVO[n.motivo] || n.motivo}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" onClick={() => setRevisao(null)} className="btn-ghost">
+                {revisao.itens.length === 0 ? "Fechar" : "Cancelar"}
+              </button>
+              {revisao.itens.length > 0 && (
+                <button type="button" onClick={handleAplicarRevisao} className="btn-primary">Aplicar mudanças</button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === MODAL DO EXTRATOR === */}
+      {isScraperModalOpen && (
+        <div className="modal-overlay scraper-overlay">
+          <div className="modal-content modal-animate">
+            <h3 className="modal-title">Preenchimento automático</h3>
+            <p className="modal-desc">Cole o link do produto abaixo para buscarmos o nome, preço e foto.</p>
+
+            <input
+              type="text"
+              placeholder="Cole o link aqui..."
+              value={scraperLink}
+              onChange={(e) => setScraperLink(e.target.value)}
+              className="input-field"
+              disabled={isScraping}
+            />
+
+            {isScraping ? (
+              <div className="scraper-loading">
+                <div className="spinner"></div>
+                <p>
+                  Buscando dados na loja...<br /><strong>Isso pode demorar um pouco, por favor aguarde.</strong>
+                </p>
+              </div>
+            ) : (
+              <div className="modal-actions">
+                <button type="button" onClick={() => setIsScraperModalOpen(false)} className="btn-ghost">Cancelar</button>
+                <button type="button" onClick={handleAutoFill} className="btn-primary">Buscar dados</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

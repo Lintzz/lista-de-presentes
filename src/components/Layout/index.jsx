@@ -9,7 +9,9 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "../../lib/firebase";
 import { useGlobal } from "../../context/GlobalContext";
 import { useAuth } from "../../context/AuthContext";
-import "./Layout.css"; // Importação do CSS
+import { Avatar } from "../ui/Avatar";
+import { ThemeSelect } from "../ui/ThemeSelect";
+import "./Layout.css";
 
 export default function Layout({ children }) {
   const router = useRouter();
@@ -76,6 +78,8 @@ export default function Layout({ children }) {
     router.push("/");
   };
 
+  const isActive = (href) => (href === "/" ? pathname === "/" : pathname?.startsWith(href));
+
   return (
     <div className="layout-wrapper">
       {/* Modal Global de Nome */}
@@ -106,37 +110,42 @@ export default function Layout({ children }) {
       <header className="header">
         <div className="header-container">
           <Link href="/" className="logo-link">
-            {/* Como o vite usava a tag img com import, no next podemos usar img normal com caminho publico ou next/image.
-                Vou usar o formato Next.js (colocando a logo no src/assets para a tag img normal se compilar ou /assets)
-                Mas no app router é melhor deixar estático */}
-            <img src="/images/Logo.png" alt="GiftList Logo" className="logo-img" />
+            <img src="/images/Logo.png" alt="Meu Presente" className="logo-img" />
           </Link>
 
+          {user && (
+            <nav className="header-nav">
+              <Link href="/" className={`nav-link ${isActive("/") ? "active" : ""}`}>
+                Início
+              </Link>
+              <Link href="/minhas-listas" className={`nav-link ${isActive("/minhas-listas") ? "active" : ""}`}>
+                Minhas listas
+              </Link>
+
+              <Link href="/minhas-listas" className="nav-link-mobile" title="Minhas listas">
+                <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </Link>
+            </nav>
+          )}
+
           <div className="header-right">
+            <ThemeSelect />
+
             {user ? (
               <>
-                <Link href="/minhas-listas" className="nav-link">
-                  Minhas Listas
+                <Link href="/perfil" className="profile-link">
+                  <Avatar src={user.photoURL} name={user.displayName} size={30} />
+                  <span className="profile-name">{user.displayName}</span>
                 </Link>
 
-                <Link href="/minhas-listas" className="nav-link-mobile">
-                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <button onClick={handleLogout} className="btn-logout" title="Sair">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                </Link>
-
-                <div className="user-menu">
-                  <Link href="/perfil" className="profile-link">
-                    <img src={user.photoURL} alt="Perfil" className="profile-img" />
-                    <span className="profile-name">{user.displayName}</span>
-                  </Link>
-
-                  <button onClick={handleLogout} className="btn-logout" title="Sair">
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                  </button>
-                </div>
+                  <span className="btn-logout-label">Sair</span>
+                </button>
               </>
             ) : (
               <button onClick={handleLogin} disabled={isLoggingIn} className="btn-primary">

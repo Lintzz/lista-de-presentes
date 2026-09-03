@@ -1,68 +1,143 @@
-/* src/pages/Home.css */
+/* src/styles/Home.css */
 
 .home-container {
-  max-width: 42rem;
-  margin: 2.5rem auto 0;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 0 40px;
+  display: grid;
+  gap: 44px;
   text-align: center;
-  padding: 0 1rem;
+}
+
+.home-hero {
+  display: grid;
+  gap: 22px;
+  justify-items: center;
+}
+
+.home-eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-primary-hover);
+  background-color: var(--color-primary-soft);
+  border: 1px solid var(--color-eyebrow-border);
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
 }
 
 .home-title {
-  font-size: 2.25rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
+  margin: 0;
+  font-size: clamp(2.125rem, 7vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 800;
   color: var(--color-text-heading);
 }
 
 .home-subtitle {
+  margin: 0;
   font-size: 1.125rem;
-  margin-bottom: 2rem;
+  line-height: 1.6;
   color: var(--color-text-muted);
+  max-width: 520px;
+  text-wrap: pretty;
 }
 
-/* Estilos do Card */
+/* === CARD DE BUSCA === */
 .search-card {
-  background-color: var(--color-card-bg);
-  padding: 2rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-border);
-  box-shadow: 0 10px 15px -3px var(--color-shadow-md);
+  background: var(--grad-card);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--r-2xl);
+  padding: 34px;
+  box-shadow: var(--shadow-card);
+  display: grid;
+  gap: 18px;
+  text-align: left;
 }
+
+.search-card-head { display: grid; gap: 6px; }
 
 .search-card-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  margin: 0;
+  font-size: 1.1875rem;
+  font-weight: 700;
   color: var(--color-card-heading);
 }
 
-/* Estilos do Formulário interno */
+.search-card-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
 .search-form {
   display: flex;
-  gap: 0.5rem;
-  max-width: 28rem;
-  margin: 0 auto;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .search-input {
-  text-align: center;
+  flex: 1;
+  min-width: 200px;
+  font-family: var(--font-code);
+  font-size: 1.25rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 1.125rem;
+  text-align: center;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
 }
 
-/* Estilos da área de Login */
-.login-prompt {
-  margin-top: 3rem;
+.search-submit {
+  padding: 0 30px;
+  font-size: 0.9375rem;
 }
 
-.login-prompt-text {
-  color: var(--color-text-muted);
-  margin-bottom: 0.25rem;
+.search-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.login-prompt-hint {
+.search-card-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-placeholder);
+}
+
+/* === PASSOS === */
+.home-steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  text-align: left;
+}
+
+.home-step {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--r-md);
+  padding: 20px;
+  background-color: var(--color-surface-translucent);
+}
+
+.home-step-num {
+  margin: 0 0 6px;
+  font-size: 0.6875rem;
+  color: var(--color-primary-hover);
+}
+
+.home-step-text {
+  margin: 0;
   font-size: 0.875rem;
-  color: var(--color-text-muted);
-  opacity: 0.8;
+  font-weight: 600;
+  color: var(--color-text-strong);
+  line-height: 1.45;
+}
+
+@media (min-width: 768px) {
+  .home-container { padding: 96px 0 40px; gap: 56px; }
+  .home-steps { grid-template-columns: repeat(3, 1fr); }
 }

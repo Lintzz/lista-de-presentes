@@ -1,67 +1,77 @@
-/* src/components/Layout.css */
+/* src/components/Layout/Layout.css */
 
 .layout-wrapper {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   position: relative;
+  background: var(--grad-page);
 }
 
-/* Modal de Boas Vindas */
+/* === MODAIS (casca reutilizada por todas as telas) === */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 90;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--color-overlay);
-  backdrop-filter: blur(4px);
-  padding: 1rem;
+  backdrop-filter: blur(6px);
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .modal-content {
   background-color: var(--color-card-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
-  box-shadow: 0 25px 50px -12px var(--color-shadow-lg);
-  max-width: 24rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-modal);
+  max-width: 420px;
   width: 100%;
-  padding: 1.5rem;
+  padding: 28px;
+  box-sizing: border-box;
+}
+
+/* Variante larga (formulário de presente) */
+.modal-content.modal-wide {
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  text-align: center;
-  color: var(--color-card-heading);
-  margin-bottom: 0.5rem;
+  font-size: 1.375rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-text-heading);
+  margin: 0 0 6px;
 }
 
 .modal-desc {
-  text-align: center;
   color: var(--color-text-muted);
   font-size: 0.875rem;
-  margin-bottom: 1rem;
+  margin: 0 0 18px;
 }
 
-/* Cabeçalho (Header) */
+/* === CABEÇALHO === */
 .header {
-  background-color: var(--color-header-bg);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0.75rem;
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 1px 2px 0 var(--color-shadow-light);
+  background-color: var(--color-header-glass);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border-header);
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: 1160px;
   margin: 0 auto;
+  padding: 14px 24px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
 }
 
 .logo-link {
@@ -71,131 +81,152 @@
   transition: opacity 0.2s;
 }
 .logo-link:hover { opacity: 0.8; }
-.logo-img { height: 2.5rem; width: auto; object-fit: contain; }
+.logo-img { height: 30px; width: auto; object-fit: contain; }
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
+  margin-left: auto;
 }
 
-/* Navegação */
+/* Navegação em pílulas */
 .nav-link {
   display: none; /* Escondido no mobile */
   align-items: center;
-  gap: 0.5rem;
+  gap: 8px;
   color: var(--color-text-muted);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  font-size: 0.875rem;
   text-decoration: none;
   transition: background-color 0.2s, color 0.2s;
 }
 
 .nav-link:hover {
-  color: var(--color-primary);
-  background-color: var(--color-bg-hover);
+  color: var(--color-card-heading);
+  background-color: var(--color-header-bg);
+}
+
+.nav-link.active {
+  color: var(--color-text-heading);
+  background-color: var(--color-header-bg);
 }
 
 .nav-link-mobile {
-  display: block; /* Mostrado no mobile */
-  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  padding: 8px;
   color: var(--color-text-muted);
-  border-radius: 50%;
+  border-radius: var(--r-pill);
   transition: background-color 0.2s, color 0.2s;
 }
 
 .nav-link-mobile:hover {
-  color: var(--color-primary);
-  background-color: var(--color-bg-hover);
+  color: var(--color-card-heading);
+  background-color: var(--color-header-bg);
 }
 
-.user-menu {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  border-left: 1px solid var(--color-border);
-  padding-left: 0.75rem;
-  margin-left: 0.25rem;
-}
-
+/* Pílula do usuário */
 .profile-link {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem;
-  padding-right: 0.5rem;
-  border-radius: 9999px;
+  gap: 10px;
+  background-color: var(--color-surface-raised);
+  border: 1px solid var(--color-border-soft);
+  padding: 5px 14px 5px 5px;
+  border-radius: var(--r-pill);
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: border-color 0.2s;
 }
 
-.profile-link:hover { background-color: var(--color-bg-hover); }
-
-.profile-img {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  object-fit: cover;
-}
+.profile-link:hover { border-color: var(--color-primary); }
 
 .profile-name {
   display: none; /* Escondido no mobile */
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-text-heading);
-  max-width: 6rem;
+  max-width: 8rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .btn-logout {
-  padding: 0.5rem;
-  color: var(--color-error-text);
+  display: flex;
+  align-items: center;
+  gap: 7px;
   background: transparent;
-  border: none;
-  border-radius: 50%;
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-text-muted);
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  font-size: 0.8125rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .btn-logout:hover {
-  background-color: var(--color-error-bg);
-  color: var(--color-error-hover);
+  border-color: var(--color-logout-hover-border);
+  color: var(--color-error-text);
+  background-color: var(--color-logout-hover-bg);
 }
 
-/* Área Principal e Footer */
+.btn-logout-label { display: none; }
+
+/* Seletor de tema (aparência, seta e cores das opções vêm do globals.css) */
+.theme-select {
+  border: 1px solid var(--color-border-soft);
+  color: var(--color-text-muted);
+  border-radius: var(--r-pill);
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  /* sem background-color aqui: o fundo opaco vem do globals.css, senão o popup
+     nativo de opções volta a renderizar branco no Chrome/Windows */
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.theme-select:hover { border-color: var(--color-primary); color: var(--color-text-heading); }
+
+/* === ÁREA PRINCIPAL E RODAPÉ === */
 .main-content {
   flex-grow: 1;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1160px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0 16px 64px;
   box-sizing: border-box;
 }
 
 .footer {
-  padding: 1.5rem 0;
-  margin-top: 2rem;
-  border-top: 1px solid var(--color-border);
-  background-color: var(--color-card-bg);
+  border-top: 1px solid var(--color-border-header);
+  padding: 22px 24px;
   text-align: center;
 }
 
 .footer p {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  font-weight: 500;
+  font-size: 0.8125rem;
+  color: var(--color-placeholder);
   margin: 0;
 }
 
-/* Media Queries para Responsividade */
+/* === RESPONSIVO === */
 @media (min-width: 768px) {
-  .header-right { gap: 1rem; }
   .nav-link { display: flex; }
   .nav-link-mobile { display: none; }
   .profile-name { display: block; }
-  .main-content { padding: 1.5rem; }
+  .btn-logout-label { display: inline; }
+  .main-content { padding: 0 24px 80px; }
 }
